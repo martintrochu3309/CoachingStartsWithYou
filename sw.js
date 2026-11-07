@@ -1,5 +1,5 @@
 /* Offline cache. Bump VERSION every time you upload a new build. */
-const VERSION = "cc-v23";
+const VERSION = "cc-v24";
 const FILES = [
   "./", "index.html", "manifest.json",
   "dx/dailyxcellence.css", "css/change-check.css",
@@ -17,7 +17,10 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   // Supabase (login, saving) always goes straight to the network: never cached, never answered with index.html.
-  if (new URL(e.request.url).origin !== location.origin) return;
+  const url = new URL(e.request.url);
+  if (url.origin !== location.origin) return;
+  // The admin dashboard and ?dashboard always load fresh from the network (never an old cached copy).
+  if (url.pathname.includes("/admin/") || url.pathname.endsWith("/admin") || url.searchParams.has("dashboard")) return;
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       if (res.ok && new URL(e.request.url).origin === location.origin) {

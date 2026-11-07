@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- …/?dashboard opens the admin dashboard (admin/), which has its own sign-in and admin check. -->
+  <script>if (new URLSearchParams(location.search).has("dashboard")) location.replace("admin/");</script>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Change Check · Daily Xcellence</title>
   <meta name="description" content="Coaching starts with you. Five honest questions, one action to improve.">
