@@ -1,0 +1,303 @@
+/* Change Check · the pieces the DailyXcellence kit doesn't have yet.
+   Everything here uses the kit's tokens (--dx-…), so brand changes stay in dx/dailyxcellence.css. */
+
+/* Black-and-white for now: gold tokens remapped to ink/greys. Delete this block to bring gold back. */
+:root {
+  --dx-gold: var(--dx-ink);
+  --dx-gold-text: var(--dx-ink);
+  --dx-gold-tint: var(--dx-surface);
+  --dx-gold-hint: var(--dx-ink);
+  --dx-gold-line: var(--dx-line);
+  --dx-gold-gradient: var(--dx-ink);
+  --dx-on-gold: #ffffff;
+}
+.dx .dx-row.is-active .dx-dot, .dx .dx-row.is-done .dx-dot, .dx .dx-mark, .dx .dx-tile--today,
+.dx .cc-circ.is-on, .dx .cc-done .dx-card-label, .dx .cc-done .cc-keep b { color: #ffffff; }
+.dx .dx-tile--yes { background: var(--dx-ink); color: #ffffff; box-shadow: 0 7px 0 #000; }
+
+html { background: var(--dx-bg); }
+body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
+:where(.dx) button { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; }
+#app { max-width: var(--dx-column); margin: 0 auto; }
+/* Screen titles one step up from the kit's 22px (big --xl titles keep their own size).
+   Kept early in this file so specific overrides further down (e.g. the A/B/C sheet title) still win. */
+.dx-title:not(.dx-title--xl) { font-size: 24px; }
+
+/* Screen frame: kit column + a bottom area that sits at the foot of the phone */
+.cc-foot { margin-top: 28px; }
+.cc-foot--right { display: flex; justify-content: flex-end; }
+/* Landing: title dead-centre on screen, Begin + tagline pinned to the bottom */
+.cc-landing { display: grid; grid-template-rows: 1fr auto 1fr; text-align: center; }
+/* FOLLOW-THROUGH big and loud; STARTS WITH YOU smaller, spaced out, one line, centred under it.
+   14 letters, so it scales with the screen width to stay on one line down to 320px phones. */
+.cc-hero { margin: 0; }
+.cc-hero-big { display: block; font: italic 700 42px/1 var(--dx-font-display); font-size: min(42px, 9vw); letter-spacing: -.04em; white-space: nowrap; }
+.cc-logo { display: block; width: 120px; height: auto; }
+.cc-landing .cc-foot { align-self: end; }
+.cc-home { padding-bottom: calc(130px + env(safe-area-inset-bottom)); }
+
+/* Top row on the question screens: back + segmented progress */
+.cc-top { display: flex; align-items: center; gap: 14px; }
+.cc-top .dx-bar { flex: 1; }
+.cc-back { display: inline-grid; place-items: center; width: 36px; height: 36px; margin-left: -8px; border-radius: 18px; color: var(--dx-ink); }
+.cc-back svg { width: 22px; height: 22px; }
+.cc-backlink { display: inline-flex; align-items: center; gap: 4px; margin-left: -6px; font: 700 11px/1 var(--dx-font-body); letter-spacing: .18em; color: var(--dx-ink); padding: 8px 0; }
+.cc-backlink svg { width: 18px; height: 18px; }
+
+/* "The mirror is for you": logo top left, title, grey italic line, then the four short paragraphs */
+.cc-mirror .cc-logo { margin-top: 14px; }
+.cc-mirror .dx-title { margin-top: 36px; }
+.cc-mirror-sub { font-style: italic; }
+.cc-mirror .cc-q + .cc-q { margin-top: 14px; }
+.cc-mirror .cc-mirror-sub + .cc-q { margin-top: 22px; }
+
+/* Sign up / sign in */
+.cc-auth .cc-logo { margin-top: 14px; }
+.cc-auth .cc-logo + .dx-title { margin-top: 36px; }
+.cc-stack { display: flex; flex-direction: column; gap: 12px; }
+.cc-field { display: block; margin-top: 18px; }
+.cc-field-label { display: block; margin: 0 0 8px; font: 700 11px/1 var(--dx-font-body); letter-spacing: .18em; color: var(--dx-muted); }
+.cc-field-gap { margin-top: 24px; }
+/* Typed text stays 16px+: iPhone Safari zooms the page into any field smaller than that. */
+.cc-input { display: block; width: 100%; height: 52px; padding: 0 16px; border: 1px solid var(--dx-rule); border-radius: var(--dx-radius-box);
+  background: var(--dx-surface); font-size: 17px; font-weight: 500; color: var(--dx-ink); }
+.cc-input:focus { outline: none; border-color: var(--dx-ink); }
+/* Drop-downs (gender, age): same box as the text fields, a chevron on the right, grey "Choose" until picked */
+.cc-select { position: relative; display: block; }
+.cc-select select { -webkit-appearance: none; appearance: none; padding-right: 44px; cursor: pointer; }
+.cc-select.is-empty select { color: var(--dx-soft); font-weight: 300; }
+.cc-select option { color: var(--dx-ink); }
+.cc-select svg { position: absolute; right: 16px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); pointer-events: none; color: var(--dx-ink); }
+/* Code screen: the email shown read-only, in the same box as on the sign-up form */
+.cc-input--read { display: flex; align-items: center; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Organization on sign-up: set by the link, locked (lock on the right) */
+.cc-input--locked { justify-content: space-between; gap: 12px; color: var(--dx-ink); }
+.cc-input--locked .cc-lock { flex: none; color: var(--dx-soft); }
+.cc-privacy { margin: 24px 0 0; font-size: 13px; line-height: 1.5; font-weight: 300; color: var(--dx-muted); }
+.cc-auth-err { margin-top: 16px; }
+.cc-auth-email { font-weight: 500; color: var(--dx-ink); word-break: break-all; }
+/* Six code boxes; one invisible input sits over them so typing, pasting and iPhone code autofill all work */
+.cc-code { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 28px; }
+.cc-code input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; font-size: 16px; color: transparent; caret-color: transparent; }
+.cc-code-box { display: grid; place-items: center; height: 60px; border: 1px solid var(--dx-rule); border-radius: 14px; background: var(--dx-surface);
+  font: italic 700 26px/1 var(--dx-font-display); color: var(--dx-ink); }
+.cc-code:focus-within .cc-code-box.is-next { border-color: var(--dx-ink); }
+.cc-test-note { margin-top: 18px; font-size: 13px; }
+.cc-links { display: flex; justify-content: space-between; gap: 12px; margin-top: 22px; }
+.cc-link { padding: 10px 0; font: 700 11px/1 var(--dx-font-body); letter-spacing: .18em; color: var(--dx-ink); }
+.cc-link[disabled] { color: var(--dx-soft); cursor: default; }
+
+/* "See an example" under each question: light grey italic, quietly underlined so it reads as tappable */
+.cc-ex-link { align-self: flex-start; margin-top: 12px; padding: 4px 0; font-size: 15px; font-style: italic; font-weight: 300; color: var(--dx-soft);
+  text-decoration: underline; text-decoration-color: var(--dx-rule); text-underline-offset: 3px; }
+
+/* Questions */
+.cc-q { margin: 12px 0 0; font-size: 17px; line-height: 1.5; font-weight: 300; color: var(--dx-ink); }
+/* Letter-spacing also adds space after the last letter; indent by the same amount so the word sits truly centred */
+.cc-pills .dx-pill { padding: 0; text-indent: .18em; text-align: center; }
+.cc-choose { margin-top: 28px; text-align: center; font-size: 14px; line-height: 1.5; }
+
+/* Example toggle */
+.cc-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 16px; padding: 6px 0;
+  font: 700 11px/1 var(--dx-font-body); letter-spacing: .18em; color: var(--dx-ink); }
+.cc-toggle svg { width: 18px; height: 18px; transition: transform .2s ease; }
+.cc-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+/* Live hint under the action boxes */
+.cc-ev-note { min-height: 21px; margin: 8px 2px 0; text-align: left; font-size: 14px; font-style: italic; font-weight: 300; color: var(--dx-soft); }
+.cc-example { font-size: 14px; font-style: italic; font-weight: 300; color: var(--dx-muted); }
+
+/* Result screen: small grey "TODAY, YOU…", then the status big; NOT STARTED IT still fits one line at 320px */
+.cc-today-label { margin-top: 10px; text-align: center; font-size: 15px; }
+.cc-today { margin: 10px 0 0; text-align: center; font: italic 700 40px/1 var(--dx-font-display); font-size: min(40px, 9vw);
+  letter-spacing: -.03em; white-space: nowrap; }
+.cc-track { stroke: var(--dx-line); }
+.cc-arc { stroke: var(--dx-gold); }
+
+/* Answer rows (score, See it) */
+.cc-rows { list-style: none; margin: 22px 0 0; padding: 0; }
+.cc-r { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--dx-rule); }
+.cc-r:last-child { border-bottom: 1px solid var(--dx-rule); }
+.cc-num { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--dx-ink);
+  background: #fff; color: var(--dx-ink); font: italic 700 11px/1 var(--dx-font-display); }
+.cc-r .t { flex: 1; min-width: 0; font: italic 700 13px/1.25 var(--dx-font-display); text-transform: uppercase; letter-spacing: -.01em; }
+.cc-dots { flex: none; display: flex; gap: 4px; }
+.cc-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--dx-locked); }
+.cc-dots i.on { background: var(--dx-ink); }
+/* Score screen: spacing scales with screen height so it never scrolls, even on an iPhone SE. */
+.cc-score .dx-title { text-align: center; }
+
+/* Status screen: title and tips label always on one line (scale with screen width), quieter body */
+.cc-guidance .dx-title--xl { margin-top: 0; font-size: min(34px, 8.2vw); white-space: nowrap; }
+.cc-guidance .dx-intro, .cc-guidance .dx-text, .cc-guidance .dx-answer { font-size: 16px; line-height: 1.5; }
+.cc-tips-label { margin-top: 36px; font-size: min(12px, 3.2vw); letter-spacing: .14em; white-space: nowrap; }
+.cc-score .cc-rows { margin-top: min(32px, 4vh); }
+.cc-score .cc-r { padding: min(12px, 1.3vh) 0; }
+.cc-score-note { margin-top: min(14px, 1.6vh); font-size: 14px; text-align: center; }
+.cc-score .cc-foot { margin-top: min(28px, 2.5vh); }
+
+/* Tips list (Act-rail style, black dot, gold number) */
+.cc-tips { margin-top: 16px; }
+.cc-tips .dx-row-body { padding-bottom: 22px; }
+/* Tip text = the body text used everywhere else (16px light grey) */
+.cc-tips .dx-answer { margin-top: 6px; font-size: 16px; line-height: 1.5; color: var(--dx-muted); }
+.cc-tips .dx-eyebrow { margin-top: 0; padding-top: 10px; }
+/* No eyebrow: centre the first line on the 40px number dot (20px − half of a 22.5px line ≈ 9px) */
+.cc-tips .dx-row-body.no-eyebrow { padding-top: 0; }
+.cc-tips .dx-row-body.no-eyebrow .dx-answer { margin-top: 0; padding-top: 9px; }
+
+/* Change it: My action (no tile) and the tips heading */
+.cc-my { margin-top: 20px; }
+.cc-my-head { display: flex; align-items: center; gap: 8px; }
+.cc-lock { display: flex; color: var(--dx-ink); }
+/* TEST ONLY: the lock is a button (reset). Bigger tap area without moving the icon. */
+button.cc-lock { padding: 12px; margin: -12px; }
+.cc-my .dx-promise { margin-top: 10px; font-size: 16px; line-height: 1.5; }
+.cc-tips-title { margin: 32px 0 0; font: italic 700 20px/1.1 var(--dx-font-display); font-size: min(20px, 5.4vw); letter-spacing: -.02em; white-space: nowrap; }
+
+/* Action line */
+/* Action: When / I will in one box, split by a thin line */
+.cc-oneline { margin-top: 18px; border: 1px solid var(--dx-rule); border-radius: var(--dx-radius-box); background: var(--dx-surface); }
+.cc-oneline .dx-box-wrap { margin: 0; }
+.cc-oneline .dx-box-wrap + .dx-box-wrap { border-top: 1px solid var(--dx-rule); }
+.cc-oneline .dx-box { min-height: 0; border: 0; border-radius: 0; background: transparent; font-size: 16px; font-weight: 300; }
+/* Same look as "Write it in your own words." on the coaching-moment box */
+.cc-oneline .dx-box::placeholder { font-size: 14px; font-style: italic; font-weight: 300; }
+.cc-oneline .dx-box-starter { top: 16px; font-size: 14px; font-style: italic; font-weight: 300; }
+.cc-action .dx-text { font-size: 14px; line-height: 1.5; }
+.cc-my-action { margin-top: 28px; }
+/* Week 2/4/6 action review: current action, a status line, then two stacked choices */
+.cc-action > .dx-promise { margin-top: 16px; font-size: 16px; line-height: 1.5; color: var(--dx-ink); }
+/* Week 2/4/6 review: action tile, then the verdict in bold, then the line explaining the two choices */
+.cc-act-card { margin-top: 20px; padding: 18px 20px 16px; }
+.cc-act-card .dx-promise { margin-top: 10px; font-size: 17px; line-height: 1.5; }
+.dx-title.cc-verdict { margin-top: 32px; font-size: 24px; }
+.cc-review-line { margin: 10px 0 0; font-size: 17px; line-height: 1.5; font-weight: 300; color: var(--dx-ink); }
+.cc-review-line.cc-keep-line { margin-top: 20px; }
+.cc-choices { display: flex; flex-direction: column; gap: 12px; }
+/* Each check's action under the five rows on See it */
+.cc-rows + .cc-my { margin-top: 24px; }
+#preview .dx-promise { font-size: 16px; color: var(--dx-ink); }
+.dx-btn[disabled] { opacity: .45; cursor: default; }
+/* I'M COMMITTED: black button, a lighter bar sweeps across while held */
+.dx .cc-hold { background: var(--dx-ink); border-color: var(--dx-ink); -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; }
+.dx .cc-hold .dx-hold-fill { background: rgba(255,255,255,.28); }
+.dx .cc-hold .dx-hold-label { color: #fff; text-indent: .18em; }
+.cc-hold[disabled] { opacity: .45; cursor: default; }
+
+/* Home */
+.cc-head { display: flex; align-items: center; justify-content: space-between; }
+/* Score tile: ring left, status right, arrow top-right. Tapping the tile opens the period menu below it. */
+.cc-period { position: relative; margin-top: 22px; }
+.cc-tile { position: relative; margin-top: 0; cursor: pointer; }
+.cc-picker-arrow { position: absolute; top: 14px; right: 14px; display: flex; color: var(--dx-ink); transition: transform .15s; }
+.cc-picker-arrow.is-open { transform: rotate(180deg); }
+/* Phones: invisible native select over the whole tile opens the phone's own picker */
+.cc-native { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.cc-tile:focus-within { outline: 2px solid var(--dx-ink); outline-offset: 2px; }
+.cc-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; padding: 6px; border: 1px solid var(--dx-rule);
+  border-radius: var(--dx-radius-box); background: var(--dx-bg); box-shadow: 0 12px 32px rgba(0,0,0,.12); }
+.dx .cc-menu-item { display: block; width: 100%; padding: 14px 14px; border-radius: 10px; text-align: left;
+  font: italic 700 16px/1 var(--dx-font-display); letter-spacing: -.01em; color: var(--dx-ink); }
+.dx .cc-menu-item:hover:not([disabled]) { background: var(--dx-surface); }
+.dx .cc-menu-item.is-on { background: var(--dx-ink); color: #fff; }
+.dx .cc-menu-item[disabled] { color: var(--dx-locked-text); cursor: default; }
+/* See it tile: "TODAY, YOU…" + status, centred; side padding leaves room for the arrow.
+   Status is sized so NOT STARTED IT fits on one line inside the tile, down to 320px phones. */
+.cc-sum { padding: 22px 40px; text-align: center; }
+.cc-sum .cc-today { margin-top: 10px; font-size: min(32px, 6.4vw); }
+/* SEE IT before Week 2: "YOUR FIRST CHECK… IN 12 DAYS" (or IS READY + TAKE IT NOW) */
+.cc-first .dx-btn { margin-top: 18px; }
+.cc-first + .cc-my { margin-top: 24px; }
+/* SEE IT tile: the A/B/C circle, same as on OWN IT, centred under "TODAY, YOU ARE…" */
+.dx .cc-sum-letter { margin: 14px auto 0; }
+.cc-sum .cc-road-label { text-align: left; } /* "TODAY, YOU…" sits top-left, the status stays centred */
+/* Countdown ring on Change it */
+.cc-ring-v { font: italic 700 30px var(--dx-font-display); fill: var(--dx-ink); }
+.cc-ring-o { font: 700 9px var(--dx-font-body); letter-spacing: .16em; fill: var(--dx-muted); }
+.cc-export { display: inline-block; margin-top: 26px; font: 700 10px/1 var(--dx-font-body); letter-spacing: .18em; color: var(--dx-muted);
+  text-decoration: underline; text-underline-offset: 4px; }
+
+.cc-banner { display: flex; gap: 10px; align-items: flex-start; }
+.cc-banner > div { flex: 1; }
+.cc-banner b { display: block; font-weight: 700; color: var(--dx-ink); }
+.cc-x { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 15px; background: rgba(0,0,0,.05); }
+.cc-x svg { width: 14px; height: 14px; }
+
+/* Own it: A / B / C */
+.cc-abc { display: flex; justify-content: center; gap: min(36px, 8vw); margin: 26px 0 0; }
+/* .dx prefix: the kit's ".dx button { font-family: inherit }" would otherwise swap Magistral for the body font */
+.dx .cc-circ { flex: none; width: min(80px, 22vw); height: min(80px, 22vw); border-radius: 50% ; border: 2px solid var(--dx-ink) ; display: grid; place-items: center;
+  font: italic 700 34px/1 var(--dx-font-display) ; color: var(--dx-ink); background: var(--dx-bg) ; letter-spacing: 0; padding: 0; }
+/* Optical centring: trim the font's empty space above/below the capital, and nudge left since italics lean right */
+.dx .cc-circ > span { display: block; text-box: trim-both cap alphabetic; transform: translateX(-0.05em); }
+.cc-circ.is-on { background: var(--dx-ink) ; color: var(--dx-gold) ; }
+.cc-hint { margin-top: 14px; text-align: center; font-size: 13px; font-style: italic; font-weight: 300; color: var(--dx-soft); }
+/* Roadblock tile: title + line of text, black + bottom-right; the whole tile opens the gateway */
+.cc-road { position: relative; margin-top: 24px; padding: 18px 18px 18px; }
+/* Small label, then the roadblock name bigger; equal 12px gaps above and below the name */
+.cc-road-label { margin: 0; font: italic 700 13px/1.2 var(--dx-font-display); letter-spacing: -.01em; color: var(--dx-muted); }
+.cc-road .dx-card-title, .cc-gw-sec .dx-card-title { margin: 12px 0 0; font-size: 22px; line-height: 1.1; }
+.cc-road .dx-text, .cc-gw-sec .dx-text { margin-top: 12px; font-size: 16px; line-height: 1.5; }
+.cc-road--open { cursor: pointer; padding-right: 72px; }
+.cc-plus { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 44px; height: 44px;
+  border-radius: 50%; background: var(--dx-ink); color: #fff; }
+
+/* Gateway page */
+.cc-gw-sec { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--dx-rule); }
+.cc-gw-first { margin-top: 18px; padding-top: 0; border-top: 0; }
+.cc-gw-sec > .dx-text:first-child { margin-top: 0; }
+
+/* Change it */
+.cc-count { display: flex; align-items: center; gap: 18px; cursor: pointer; } /* tappable for testing */
+.cc-count .dx-card-title { font-size: 22px; }
+.cc-ready .dx-btn { margin-top: 16px; }
+.cc-done { background: var(--dx-ink); color: #fff; }
+.cc-done .dx-card-label { color: var(--dx-gold); }
+.cc-done .dx-card-title { color: #fff; font-size: 24px; }
+.cc-done .dx-text { color: #cfcfcb; }
+.cc-done .cc-keep { margin-top: 14px; padding-top: 12px; border-top: 1px solid #333; font-size: 16px; line-height: 1.5; font-weight: 300; color: #e8e8e4; }
+.cc-done .cc-keep b { font-weight: 700; color: var(--dx-gold); }
+
+/* Tab bar: kit styles links; these let buttons work the same */
+.dx-tabs a { cursor: pointer; font-weight: 700; letter-spacing: .14em; }
+
+/* Pop-up sheets */
+.cc-dim { position: fixed; inset: 0; z-index: 30; background: rgba(17,17,17,.42); animation: cc-fade .2s ease; }
+.cc-sheet { position: fixed; z-index: 31; left: 12px; right: 12px; bottom: max(14px, calc(env(safe-area-inset-bottom) + 8px));
+  max-width: calc(var(--dx-column) - 24px); margin: 0 auto; padding: 26px 24px 24px; border-radius: var(--dx-radius-card);
+  background: var(--dx-bg); box-shadow: 0 20px 50px rgba(0,0,0,.18); animation: cc-rise .25s ease;
+  max-height: calc(100dvh - 40px); overflow-y: auto; } /* long pop-ups (B) scroll instead of running off small screens */
+.cc-sheet .cc-x { position: absolute; right: 18px; top: 18px; }
+/* A/B/C sheet: circle and title side by side */
+.cc-sheet-head { display: flex; align-items: center; gap: 14px; padding-right: 28px; }
+.dx .cc-sheet .cc-circ { width: 56px; height: 56px; font-size: 24px ; }
+.cc-sheet .dx-title { margin-top: 16px; }
+/* Sized with the screen so the longest name (BELIEVE, BUT DON'T FOLLOW THROUGH) stays within 3 lines, even at 320px */
+/* Pop-up body: the coach's words in italics, then WHAT TO DO NEXT: / stage / action (same pattern as the roadblock tile) */
+.cc-abc-read { margin-top: 18px; }
+.cc-abc-read .cc-road-label + .dx-text { margin-top: 6px; }
+.cc-abc-read .dx-text { margin-top: 0; font-size: 16px; line-height: 1.5; font-style: italic; }
+.cc-abc-next { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--dx-rule); }
+.cc-abc-next .dx-card-title { margin: 10px 0 0; font-size: 22px; line-height: 1.1; }
+.cc-abc-next .dx-text { margin-top: 10px; font-size: 16px; line-height: 1.5; }
+.cc-sheet-head .dx-title { margin: 0; font-size: min(20px, 5.2vw); line-height: 1.1; }
+/* Question "See an example" pop-up: title, then YES / PARTLY / NO with a thin line between them */
+.cc-sheet .dx-title.cc-qex-title { margin: 4px 0 0; padding-right: 40px; font-size: min(20px, 5.2vw); line-height: 1.1; }
+.cc-qex-row { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--dx-rule); }
+.cc-qex-row:first-of-type { margin-top: 18px; padding-top: 0; border-top: 0; }
+.cc-qex-row .dx-text { margin-top: 6px; font-size: 16px; line-height: 1.5; }
+.cc-sheet.center { text-align: center; }
+.cc-sheet.center .dx-btn { margin-top: 22px; }
+.cc-sheet .dx-btn--outline { margin-top: 10px; }
+@keyframes cc-fade { from { opacity: 0; } }
+@keyframes cc-rise { from { transform: translateY(24px); opacity: 0; } }
+
+/* Demo bar (only with ?demo in the address) */
+.cc-demo { position: fixed; z-index: 40; top: 0; left: 0; right: 0; max-width: var(--dx-column); margin: 0 auto;
+  display: flex; gap: 8px; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 12px 6px; background: var(--dx-gold-tint); }
+.cc-demo span { flex: 1; font: 700 10px/1 var(--dx-font-body); letter-spacing: .14em; color: var(--dx-gold-hint); }
+.cc-demo button { height: 28px; padding: 0 12px; border-radius: 14px; background: var(--dx-ink) ; color: #fff ;
+  font: 700 10px/1 var(--dx-font-body); letter-spacing: .12em; }
+body.cc-has-demo .dx-screen { padding-top: max(64px, calc(env(safe-area-inset-top) + 48px)); }
+
+@media (prefers-reduced-motion: reduce) { .cc-dim, .cc-sheet { animation: none; } .cc-toggle svg { transition: none; } }

@@ -1,0 +1,212 @@
+/* DailyXcellence · the Mirror 21 look in one file.
+   A standalone copy of the app's styles, to take to another project: copy this whole folder (this file, fonts/,
+   demo.html), link the file, and use the dx- classes. demo.html shows every piece with its markup.
+   Mirror 21 itself does not use this file, so changing it never changes the app (and the reverse).
+   Light theme only. Every class starts with dx- so nothing clashes with a project's own styles.
+   Fonts: Magistral and Neue Haas Display are licensed; confirm the licence before using them in public. */
+
+/* ---------- Fonts ---------- */
+@font-face { font-family: "Magistral"; src: url("fonts/magistral-bold-italic.woff2") format("woff2"); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: "Neue Haas Display"; src: url("fonts/nhd-light.woff2") format("woff2"); font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: "Neue Haas Display"; src: url("fonts/nhd-light-italic.woff2") format("woff2"); font-weight: 300; font-style: italic; font-display: swap; }
+@font-face { font-family: "Neue Haas Display"; src: url("fonts/nhd-medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: "Neue Haas Display"; src: url("fonts/nhd-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+
+/* ---------- Tokens ---------- */
+:root {
+  /* Colour */
+  --dx-bg: #ffffff;            /* page */
+  --dx-surface: #f7f7f5;       /* boxes, cards, the example panel */
+  --dx-ink: #111111;           /* titles, body, black buttons and dots */
+  --dx-muted: #646461;         /* helper lines, descriptions, starters on Act */
+  --dx-soft: #8a8a86;          /* sentence starters inside boxes, quiet labels */
+  --dx-faint: #b0b0ac;         /* "…" still to write */
+  --dx-rule: #dededb;          /* 1px dividers, box borders */
+  --dx-track: #ececea;         /* empty progress, disabled buttons */
+  --dx-line: #e6e6e3;          /* the Act rail line, ring tracks */
+  --dx-outline: #c9c9c5;       /* outline buttons */
+  --dx-locked: #d6d6d3;        /* rings of locked and read-only dots */
+  --dx-locked-text: #8f8f8b;   /* numbers of locked dots */
+  --dx-gold: #e0b84c;          /* fills, rings, gold on black. Never as text on white */
+  --dx-gold-text: #896a00;     /* gold used as text on white */
+  --dx-gold-tint: #f6efdc;     /* hint backgrounds */
+  --dx-gold-hint: #5c4700;     /* text on the gold tint */
+  --dx-gold-line: #ecdcae;     /* the Learn rail line */
+  --dx-gold-gradient: linear-gradient(110deg, #d8ad3e, #ffef9a 53%, #d8ad3e); /* I'M COMMITTED, COMMITTED mark */
+  --dx-on-gold: #101010;
+  /* Type */
+  --dx-font-display: "Magistral", Arial, sans-serif;          /* always bold italic, capitals */
+  --dx-font-body: "Neue Haas Display", Arial, sans-serif;
+  /* Layout */
+  --dx-column: 480px;
+  --dx-pad: 24px;
+  --dx-radius-box: 16px;
+  --dx-radius-card: 24px;
+  --dx-radius-pill: 28px;
+}
+
+/* ---------- Base ---------- */
+.dx, .dx *, .dx *::before, .dx *::after { box-sizing: border-box; }
+.dx { margin: 0; background: var(--dx-bg); color: var(--dx-ink); font-family: var(--dx-font-body); -webkit-font-smoothing: antialiased; }
+.dx :focus-visible { outline: 2px solid var(--dx-gold-text); outline-offset: 4px; }
+.dx button, .dx textarea, .dx input { font-family: inherit; }
+/* One centred phone column, kept clear of the clock and home indicator. */
+.dx-screen { max-width: var(--dx-column); margin: 0 auto; min-height: 100dvh; display: flex; flex-direction: column;
+  padding: max(28px, calc(env(safe-area-inset-top) + 12px)) var(--dx-pad) max(34px, calc(env(safe-area-inset-bottom) + 16px)); }
+.dx-spacer { flex: 1; }
+
+/* ---------- Text ---------- */
+.dx-label { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.23em; color: var(--dx-gold-text); }            /* STEP 12 */
+.dx-label--muted { color: var(--dx-muted); }
+.dx-title { margin: 10px 0 0; font: italic 700 22px/1.1 var(--dx-font-display); letter-spacing: -0.035em; }                 /* YOUR TURN. */
+.dx-title--xl { font-size: 40px; line-height: 1; letter-spacing: -0.04em; }                                                 /* MY JOURNEY */
+.dx-intro { margin: 10px 0 0; font-size: 18px; line-height: 1.5; font-weight: 300; color: var(--dx-muted); }
+.dx-text { margin: 8px 0 0; font-size: 17px; line-height: 1.55; font-weight: 300; color: var(--dx-muted); }                 /* body, descriptions */
+.dx-quote { margin: 44px 0 0; padding: 30px 0; border-top: 1px solid var(--dx-rule); border-bottom: 1px solid var(--dx-rule);
+  font: italic 700 27px/1.22 var(--dx-font-display); letter-spacing: -0.02em; }
+.dx-quote em { font-style: inherit; color: var(--dx-gold-text); }                                                           /* the gold half */
+.dx-starter { color: var(--dx-muted); }                                                                                     /* grey sentence starter in running text */
+
+/* ---------- Buttons ---------- */
+/* Full-width 56px pill, label centred, the arrow right after the words. */
+.dx-btn { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; height: 56px; padding: 0 24px;
+  border: 1px solid transparent; border-radius: var(--dx-radius-pill); text-decoration: none; cursor: pointer;
+  font: 700 12px/1 var(--dx-font-body); letter-spacing: 0.18em; }
+.dx-btn svg { flex: none; }
+.dx-btn--ink { background: var(--dx-ink); color: #fff; }                    /* YOUR TURN */
+.dx-btn--white { background: #fff; color: var(--dx-ink); }                  /* LEARN on a dark video */
+.dx-btn--gold { background: var(--dx-gold-gradient); color: var(--dx-on-gold); }
+.dx-btn--outline { background: transparent; color: var(--dx-ink); border-color: var(--dx-outline); }
+/* Small choice pills, side by side or stacked (YES / NOT SURE, MY MINIMUM / MY SWAP AND MY LINE). */
+.dx-pills { display: flex; gap: 10px; margin-top: 18px; }
+.dx-pills--stack { flex-direction: column; }
+.dx-pill { flex: 1; height: 52px; border-radius: 26px; cursor: pointer; font: 700 11px/1 var(--dx-font-body); letter-spacing: 0.18em;
+  border: 1px solid var(--dx-outline); background: transparent; color: var(--dx-ink); }
+.dx-pills--stack .dx-pill { flex: none; }
+.dx-pill.is-on, .dx-pill--ink { border-color: var(--dx-ink); background: var(--dx-ink); color: #fff; }
+/* Round "next" arrow. */
+.dx-next { width: 48px; height: 48px; border-radius: 24px; border: none; cursor: pointer; display: grid; place-items: center;
+  background: var(--dx-gold-gradient); color: var(--dx-on-gold); }
+.dx-next:disabled { background: var(--dx-track); color: var(--dx-locked-text); cursor: default; }
+/* Press-and-hold (I'M COMMITTED): put a .dx-hold-fill inside and grow its width from 0 to 100%. */
+.dx-hold { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 56px; padding: 0; overflow: hidden;
+  border: 1px solid var(--dx-rule); border-radius: var(--dx-radius-pill); background: var(--dx-surface); cursor: pointer; }
+.dx-hold-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--dx-gold-gradient); }
+.dx-hold-label { position: relative; font: 700 12px/1 var(--dx-font-body); letter-spacing: 0.18em; color: var(--dx-on-gold); }
+.dx-hold-help { margin: 10px 0 0; text-align: center; font-size: 13px; font-weight: 500; color: var(--dx-muted); }
+
+/* ---------- Learn rail: numbered moves ---------- */
+/* White circles, gold ring and gold number, joined by a soft gold line that stops at the last circle. */
+.dx-moves { list-style: none; margin: 26px 0 0; padding: 0; display: flex; flex-direction: column; gap: 30px; }
+.dx-move { position: relative; display: flex; gap: 18px; }
+.dx-move:not(:last-child)::before { content: ""; position: absolute; left: 21px; top: 22px; bottom: -52px; width: 2px; background: var(--dx-gold-line); }
+.dx-move-num { position: relative; z-index: 1; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%;
+  border: 2px solid var(--dx-gold); background: var(--dx-bg); font: italic 700 17px/1 var(--dx-font-display); color: var(--dx-gold-text); }
+.dx-move-body { min-width: 0; padding-top: 8px; }
+.dx-move-key { margin: 0; font: italic 700 24px/1 var(--dx-font-display); letter-spacing: -0.02em; }
+
+/* ---------- Example panel ---------- */
+/* Full-width grey panel; black-ringed circles joined by a black line; grey words; the promise last, with a lock. */
+.dx-example { margin: 34px calc(var(--dx-pad) * -1) 0; padding: 30px var(--dx-pad) 34px; background: var(--dx-surface); }
+.dx-example-title { margin: 0; text-align: center; font: italic 700 22px/1 var(--dx-font-display); letter-spacing: 0.02em; }
+.dx-example-rows { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-direction: column; gap: 28px; }
+.dx-example-row { position: relative; display: flex; gap: 18px; }
+.dx-example-row:not(:last-child)::before { content: ""; position: absolute; left: 17px; top: 18px; bottom: -46px; width: 2px; background: var(--dx-ink); }
+.dx-example-num { position: relative; z-index: 1; flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--dx-ink); background: var(--dx-bg); font: italic 700 13px/1 var(--dx-font-display); color: var(--dx-ink); }
+.dx-example-body { min-width: 0; padding-top: 7px; }
+.dx-example-key { margin: 0; font: italic 700 20px/1.1 var(--dx-font-display); letter-spacing: -0.02em; }
+
+/* ---------- Promise ---------- */
+/* Fixed words grey, the person's own words black (wrap them in <b class="dx-own">). */
+.dx-promise { margin: 8px 0 0; font-size: 17px; line-height: 1.55; font-weight: 300; color: var(--dx-muted); }
+.dx-own { font-weight: inherit; color: var(--dx-ink); }
+.dx-own:empty::before { content: "…"; color: var(--dx-faint); }
+
+/* ---------- Act rail: question rows ---------- */
+/* Each row: a dot on the rail, the title level with it, the small gold line under it, then helper line and box.
+   States: .is-active / .is-done (black dot, gold number), .is-static (read-only: white, grey ring, gold number),
+   .is-locked (still to come: faded). The last row's dot can hold a lock (.dx-dot--lock). */
+.dx-rows { margin-top: 28px; }
+.dx-row { display: flex; gap: 16px; transition: opacity 400ms ease; }
+.dx-row.is-locked { opacity: 0.38; }
+.dx-rail { width: 40px; flex: none; display: flex; flex-direction: column; align-items: center; }
+.dx-dot { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--dx-locked);
+  background: var(--dx-bg); font: italic 700 15px/1 var(--dx-font-display); color: var(--dx-locked-text); transition: background 400ms ease, color 400ms ease; }
+.dx-row.is-active .dx-dot, .dx-row.is-done .dx-dot { background: var(--dx-ink); border-color: var(--dx-ink); color: var(--dx-gold); }
+.dx-row.is-static .dx-dot { background: var(--dx-bg); border-color: var(--dx-locked); color: var(--dx-gold-text); }
+.dx-row.is-done .dx-dot--lock { background: var(--dx-gold-gradient); border-color: transparent; color: var(--dx-on-gold); }   /* committed */
+.dx-rail-line { flex: 1; width: 2px; margin-top: 6px; border-radius: 1px; background: var(--dx-line); }
+.dx-row-body { flex: 1; min-width: 0; padding: 6px 0 32px; }
+.dx-row:last-child .dx-row-body { padding-bottom: 8px; }
+.dx-question { display: block; margin: 3px 0 0; font: italic 700 22px/1.1 var(--dx-font-display); letter-spacing: -0.02em; }
+.dx-eyebrow { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 0.23em; color: var(--dx-gold-text); }
+.dx-eyebrow--muted, .dx-row.is-locked .dx-eyebrow { color: var(--dx-muted); }
+.dx-prompt { margin: 14px 0 0; font-size: 16px; line-height: 1.45; font-weight: 300; color: var(--dx-muted); }
+.dx-answer { margin: 14px 0 0; font-size: 17px; line-height: 1.55; font-weight: 300; color: var(--dx-ink); }                  /* read-only answer */
+.dx-answer .dx-starter { color: var(--dx-muted); }
+
+/* ---------- Answer box ---------- */
+/* A grey sentence starter set in front of the box; indent the textarea by the starter's width (text-indent). */
+.dx-box-wrap { position: relative; margin-top: 14px; }
+.dx-box { display: block; width: 100%; min-height: 96px; resize: none; padding: 14px 16px; border: 1px solid var(--dx-rule);
+  border-radius: var(--dx-radius-box); background: var(--dx-surface); font-size: 17px; line-height: 1.45; font-weight: 500; color: var(--dx-ink); }
+.dx-box::placeholder { color: var(--dx-soft); }
+.dx-box-starter { position: absolute; left: 17px; top: 15px; white-space: pre; pointer-events: none; font-size: 17px; line-height: 1.45; font-weight: 500; color: var(--dx-soft); }
+.dx-hint { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--dx-gold-tint); font-size: 15px; line-height: 1.4; font-weight: 500; color: var(--dx-gold-hint); }
+.dx-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--dx-surface); font-size: 15px; line-height: 1.45; font-weight: 500; color: #3a3a38; }
+
+/* ---------- Locks and marks ---------- */
+.dx-mark { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--dx-ink); color: var(--dx-gold); }
+.dx-mark--gold { background: var(--dx-gold-gradient); color: var(--dx-on-gold); }                                           /* COMMITTED */
+.dx-mark-row { display: flex; align-items: center; gap: 10px; font: 700 12px/1 var(--dx-font-body); letter-spacing: 0.18em; }
+
+/* ---------- Cards ---------- */
+.dx-card { margin-top: 12px; padding: 16px 18px 14px; border-radius: var(--dx-radius-card); background: var(--dx-surface); }
+.dx-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.dx-card-label { margin: 0; font: 700 10px/1.4 var(--dx-font-body); letter-spacing: 0.2em; color: var(--dx-muted); }
+.dx-card-tag { margin: 0; font: 700 10px/1.4 var(--dx-font-body); letter-spacing: 0.14em; color: var(--dx-soft); }
+.dx-card-title { margin: 6px 0 0; font: italic 700 17px/1.15 var(--dx-font-display); letter-spacing: -0.02em; text-transform: uppercase; }
+.dx-card-link { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--dx-line);
+  font: 700 11px/1.4 var(--dx-font-body); letter-spacing: 0.18em; color: var(--dx-gold-text); text-decoration: none; }
+.dx-clamp-2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+/* ---------- Progress ---------- */
+/* Segmented bar: put <i style="width: 60%"> inside each .dx-bar-part. */
+.dx-bar { display: flex; gap: 6px; }
+.dx-bar-part { flex: 1; height: 6px; border-radius: 3px; background: var(--dx-track); overflow: hidden; }
+.dx-bar-part i { display: block; height: 100%; background: var(--dx-gold); }
+/* Ring (SVG, see demo.html): a track circle and a gold arc; .dx-ring--dark for a dark-grey arc (e.g. MISSED). */
+.dx-ring { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.dx-ring circle:first-of-type { stroke: var(--dx-line); }
+.dx-ring circle:last-of-type { stroke: var(--dx-gold); }
+.dx-ring--dark circle:last-of-type { stroke: var(--dx-muted); }
+.dx-ring-value { font: 700 26px var(--dx-font-display); fill: var(--dx-ink); }
+.dx-ring-sub { font: 700 8px var(--dx-font-body); letter-spacing: 0.16em; fill: var(--dx-muted); }
+.dx-ring-caption { font: italic 700 11px/1.1 var(--dx-font-display); letter-spacing: 0.04em; }
+/* Check-in marks: YES full gold, PARTLY half gold, NO a gold ring. */
+.dx-check { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--dx-gold); background: #fff; }
+.dx-check--yes { background: var(--dx-gold); }
+.dx-check--partly { background: linear-gradient(90deg, var(--dx-gold) 50%, #fff 50%); }
+
+/* ---------- Map tiles ---------- */
+/* Round tiles with a 3D lip. States: (none) locked grey, --today black, --done white with gold number, --yes gold. */
+.dx-tile { display: grid; place-items: center; width: 76px; height: 66px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: linear-gradient(#f6f6f3, #ebebe7); box-shadow: 0 7px 0 #d6d6d1; color: var(--dx-soft); font: 700 22px/1 var(--dx-font-display); }
+.dx-tile:active { transform: translateY(4px); box-shadow: 0 3px 0 #d6d6d1; }
+.dx-tile--today { width: 84px; height: 78px; background: linear-gradient(#2a2a2a, #111); color: var(--dx-gold); box-shadow: 0 6px #000, inset 0 2px rgba(255,255,255,.22); font-size: 26px; }
+.dx-tile--done { background: #fff; color: var(--dx-gold-text); }
+.dx-tile--yes { background: linear-gradient(#f2cf6c, var(--dx-gold)); color: var(--dx-on-gold); box-shadow: 0 7px 0 #b8922f; }
+.dx-bubble { display: inline-block; padding: 8px 14px; border-radius: 12px; background: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  font: 700 11px/1 var(--dx-font-body); letter-spacing: 0.18em; }
+
+/* ---------- Bottom tabs ---------- */
+.dx-tabs { position: fixed; left: 16px; right: 16px; bottom: max(24px, calc(env(safe-area-inset-bottom) + 8px)); max-width: calc(var(--dx-column) - 32px); margin: 0 auto;
+  display: flex; gap: 4px; height: 64px; padding: 6px; border-radius: 32px; border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.78); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: 0 10px 30px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.9); }
+.dx-tabs a { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 26px;
+  color: var(--dx-muted); font: 500 10px/1 var(--dx-font-body); letter-spacing: 0.06em; text-decoration: none; }
+.dx-tabs a[aria-current="page"] { background: rgba(0,0,0,.06); color: var(--dx-ink); }
+
+@media (prefers-reduced-motion: reduce) { .dx-row, .dx-dot { transition: none; } }

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DailyXcellence · style kit</title>
+<!-- Every piece of the kit, with its markup. Uses only dailyxcellence.css (no Mirror 21 files). -->
+<link rel="stylesheet" href="dailyxcellence.css">
+<style>
+  /* Demo page only: section headings between the pieces. */
+  .demo-h { margin: 48px 0 0; padding-top: 14px; border-top: 1px dashed var(--dx-outline); font: 700 10px/1.4 var(--dx-font-body); letter-spacing: .2em; color: var(--dx-soft); }
+  .demo-row { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-end; margin-top: 18px; }
+  .demo-swatch { width: 64px; text-align: center; font-size: 10px; color: var(--dx-muted); }
+  .demo-swatch span { display: block; height: 44px; margin-bottom: 6px; border-radius: 12px; border: 1px solid var(--dx-rule); }
+  .demo-dark { margin: 18px calc(var(--dx-pad) * -1) 0; padding: 24px var(--dx-pad); background: #111; }
+</style>
+</head>
+<body class="dx">
+<main class="dx-screen" style="padding-bottom: 130px">
+
+  <p class="dx-label">DAILYXCELLENCE</p>
+  <h1 class="dx-title dx-title--xl">STYLE KIT</h1>
+  <p class="dx-intro">The Mirror 21 look in one file. Copy the folder, link <b>dailyxcellence.css</b>, use the <b>dx-</b> classes.</p>
+
+  <p class="demo-h">COLOURS</p>
+  <div class="demo-row">
+    <div class="demo-swatch"><span style="background: var(--dx-ink)"></span>ink</div>
+    <div class="demo-swatch"><span style="background: var(--dx-muted)"></span>muted</div>
+    <div class="demo-swatch"><span style="background: var(--dx-surface)"></span>surface</div>
+    <div class="demo-swatch"><span style="background: var(--dx-gold)"></span>gold</div>
+    <div class="demo-swatch"><span style="background: var(--dx-gold-text)"></span>gold text</div>
+    <div class="demo-swatch"><span style="background: var(--dx-gold-gradient)"></span>gold shine</div>
+  </div>
+
+  <p class="demo-h">TEXT</p>
+  <p class="dx-label" style="margin-top: 18px">STEP 12</p>
+  <h2 class="dx-title">YOUR TURN.</h2>
+  <p class="dx-intro">Set the least you’ll do on a bad day, so your move stays alive.</p>
+  <p class="dx-text">Body text: Neue Haas Display Light, grey. <span class="dx-starter">A grey starter</span> before black words? Use .dx-answer.</p>
+  <p class="dx-quote">The minimum isn’t the goal. <em>It keeps you going.</em></p>
+
+  <p class="demo-h">BUTTONS</p>
+  <div style="display: grid; gap: 12px; margin-top: 18px">
+    <a class="dx-btn dx-btn--ink" href="#">YOUR TURN <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    <a class="dx-btn dx-btn--gold" href="#">CONTINUE</a>
+    <a class="dx-btn dx-btn--outline" href="#">WATCH AGAIN</a>
+  </div>
+  <div class="demo-dark"><a class="dx-btn dx-btn--white" href="#">LEARN <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+  <div class="dx-pills"><button class="dx-pill is-on">YES</button><button class="dx-pill">NOT SURE</button></div>
+  <div class="dx-pills dx-pills--stack"><button class="dx-pill">MY MINIMUM</button><button class="dx-pill is-on">MY SWAP AND MY LINE</button></div>
+  <div class="demo-row"><button class="dx-next" aria-label="Next"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button><button class="dx-next" disabled aria-label="Next"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  <button class="dx-hold" style="margin-top: 18px"><span class="dx-hold-fill" style="width: 40%"></span><span class="dx-hold-label">I’M COMMITTED</span></button>
+  <p class="dx-hold-help">Press and hold. Once committed, your promise can’t be changed.</p>
+
+  <p class="demo-h">LEARN RAIL</p>
+  <ol class="dx-moves">
+    <li class="dx-move"><span class="dx-move-num">01</span><div class="dx-move-body"><p class="dx-move-key">MOVE</p><p class="dx-text">Start with the move you chose in Step 3.</p></div></li>
+    <li class="dx-move"><span class="dx-move-num">02</span><div class="dx-move-body"><p class="dx-move-key">SHRINK</p><p class="dx-text">Keep the same action and the same target. Cut how much of it you do.</p></div></li>
+    <li class="dx-move"><span class="dx-move-num">03</span><div class="dx-move-body"><p class="dx-move-key">USE</p><p class="dx-text">Do the full version when you can, and the minimum when you can’t.</p></div></li>
+  </ol>
+
+  <section class="dx-example">
+    <h2 class="dx-example-title">EXAMPLE</h2>
+    <ol class="dx-example-rows">
+      <li class="dx-example-row"><span class="dx-example-num">01</span><div class="dx-example-body"><p class="dx-example-key">MOVE</p><p class="dx-text">Get up at 6:30 every day, weekends included.</p></div></li>
+      <li class="dx-example-row"><span class="dx-example-num">02</span><div class="dx-example-body"><p class="dx-example-key">SHRINK</p><p class="dx-text">Feet on the floor at 6:30, even if I’m slow after that.</p></div></li>
+      <li class="dx-example-row"><span class="dx-example-num"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><div class="dx-example-body"><p class="dx-example-key">MY PROMISE</p><p class="dx-promise">Today, I will do my move, or at least <b class="dx-own">get my feet on the floor at 6:30</b>.</p></div></li>
+    </ol>
+  </section>
+
+  <p class="demo-h">ACT RAIL</p>
+  <div class="dx-rows">
+    <section class="dx-row is-static">
+      <div class="dx-rail"><span class="dx-dot">01</span><span class="dx-rail-line"></span></div>
+      <div class="dx-row-body"><p class="dx-question">WHERE I’M GOING</p><p class="dx-eyebrow dx-eyebrow--muted">FROM STEP 01</p><p class="dx-answer"><span class="dx-starter">I want to be able to</span> speak C1.</p></div>
+    </section>
+    <section class="dx-row is-active">
+      <div class="dx-rail"><span class="dx-dot">02</span><span class="dx-rail-line"></span></div>
+      <div class="dx-row-body">
+        <label class="dx-question" for="demoBox">MY MINIMUM</label><p class="dx-eyebrow">SHRINK</p>
+        <p class="dx-prompt">The same action and the same target, just less of it.</p>
+        <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">On a bad day, the least I will do is </span><textarea class="dx-box" id="demoBox" rows="3" style="text-indent: 268px"></textarea></div>
+        <p class="dx-hint">If you couldn’t prove it, it’s still an intention.</p>
+      </div>
+    </section>
+    <section class="dx-row is-locked">
+      <div class="dx-rail"><span class="dx-dot">03</span><span class="dx-rail-line"></span></div>
+      <div class="dx-row-body"><p class="dx-question">STILL TO COME</p><p class="dx-eyebrow">LOCKED</p></div>
+    </section>
+    <section class="dx-row is-active">
+      <div class="dx-rail"><span class="dx-dot dx-dot--lock"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></div>
+      <div class="dx-row-body"><p class="dx-question">MY PROMISE</p><p class="dx-promise">Today, I will do my move, or at least <b class="dx-own"></b>.</p>
+        <div class="dx-mark-row" style="margin-top: 20px"><span class="dx-mark dx-mark--gold"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>COMMITTED</div>
+      </div>
+    </section>
+  </div>
+
+  <p class="demo-h">CARDS AND PROGRESS</p>
+  <div class="dx-card">
+    <div class="dx-card-head"><p class="dx-card-label">STEPS SO FAR</p></div>
+    <div class="demo-row" style="gap: 4px; margin-top: 12px"><span class="dx-check dx-check--yes"></span><span class="dx-check dx-check--partly"></span><span class="dx-check"></span><span class="dx-check dx-check--yes"></span></div>
+  </div>
+  <div class="dx-card" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px">
+    <div class="dx-ring"><svg viewBox="0 0 112 112" width="88" height="88" role="img" aria-label="79 percent"><circle cx="56" cy="56" r="50" fill="none" stroke-width="7"/><circle cx="56" cy="56" r="50" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="66" transform="rotate(-90 56 56)"/><text class="dx-ring-value" x="56" y="58" text-anchor="middle">79%</text><text class="dx-ring-sub" x="56" y="76" text-anchor="middle">SO FAR</text></svg><span class="dx-ring-caption">FOLLOW-THROUGH</span></div>
+    <div class="dx-ring"><svg viewBox="0 0 112 112" width="88" height="88" role="img" aria-label="6 steps to go"><circle cx="56" cy="56" r="50" fill="none" stroke-width="7"/><circle cx="56" cy="56" r="50" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="90" transform="rotate(-90 56 56)"/><text class="dx-ring-value" x="56" y="58" text-anchor="middle">6</text><text class="dx-ring-sub" x="56" y="76" text-anchor="middle">STEPS</text></svg><span class="dx-ring-caption">TO GO</span></div>
+    <div class="dx-ring dx-ring--dark"><svg viewBox="0 0 112 112" width="88" height="88" role="img" aria-label="2 missed"><circle cx="56" cy="56" r="50" fill="none" stroke-width="7"/><circle cx="56" cy="56" r="50" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="314.16" stroke-dashoffset="269" transform="rotate(-90 56 56)"/><text class="dx-ring-value" x="56" y="58" text-anchor="middle">2</text><text class="dx-ring-sub" x="56" y="76" text-anchor="middle">OF 14</text></svg><span class="dx-ring-caption">MISSED</span></div>
+  </div>
+  <div class="dx-card">
+    <div class="dx-card-head"><p class="dx-card-label">WORTH A SECOND LOOK</p><p class="dx-card-tag">MISSED</p></div>
+    <p class="dx-card-title">BREAK THE HABIT</p>
+    <p class="dx-text dx-clamp-2" style="color: #3a3a38">Today, when I’m on the sofa after dinner, I will pause and read ten pages of my book. If the moment doesn’t come, I will run through it once in my head.</p>
+    <a class="dx-card-link" href="#">REVISIT STEP 09 →</a>
+  </div>
+  <div class="dx-bar" style="margin-top: 18px"><span class="dx-bar-part"><i style="width: 100%"></i></span><span class="dx-bar-part"><i style="width: 60%"></i></span><span class="dx-bar-part"></span></div>
+
+  <p class="demo-h">MAP TILES</p>
+  <div class="demo-row" style="gap: 28px; padding-bottom: 10px">
+    <button class="dx-tile">03</button><button class="dx-tile dx-tile--done">01</button><button class="dx-tile dx-tile--yes">02</button><button class="dx-tile dx-tile--today">04</button><span class="dx-bubble">START</span>
+  </div>
+</main>
+
+<nav class="dx-tabs" aria-label="Demo tabs">
+  <a href="#" aria-current="page">MY PATH</a><a href="#">MY MIRROR</a><a href="#">MY JOURNEY</a>
+</nav>
+</body>
+</html>
