@@ -1,11 +1,11 @@
 /* Offline cache. Bump VERSION every time you upload a new build. */
-const VERSION = "cc-v22";
+const VERSION = "cc-v23";
 const FILES = [
   "./", "index.html", "manifest.json",
   "dx/dailyxcellence.css", "css/change-check.css",
   "dx/fonts/magistral-bold-italic.woff2", "dx/fonts/nhd-light.woff2", "dx/fonts/nhd-light-italic.woff2",
   "dx/fonts/nhd-medium.woff2", "dx/fonts/nhd-bold.woff2",
-  "js/data.js", "js/app.js",
+  "js/vendor/supabase.js", "js/data.js", "js/app.js",
   "assets/logo.png", "assets/icon-180.png", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-maskable-512.png"
 ];
 self.addEventListener("install", e => {
@@ -16,6 +16,8 @@ self.addEventListener("activate", e => {
 });
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // Supabase (login, saving) always goes straight to the network: never cached, never answered with index.html.
+  if (new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       if (res.ok && new URL(e.request.url).origin === location.origin) {

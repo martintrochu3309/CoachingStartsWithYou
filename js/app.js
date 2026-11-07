@@ -17,7 +17,8 @@
   // account = who signed up (first/last name, email, gender, age bracket); signedIn = signed in on this device.
   // startDate = workshop day (when they committed to their first action); firstAction = that first action, kept for the dashboard.
   // records = the checks (Week 2, 4, 6); action = the current action.
-  function fresh() { return { version: 2, records: [], action: null, firstAction: null, startDate: null, demoOffsetDays: 0, homeTipDismissed: false, account: null, signedIn: false }; }
+  // dirty = the account/action has changes not yet saved to Supabase (each check has its own "synced").
+  function fresh() { return { version: 2, records: [], action: null, firstAction: null, startDate: null, demoOffsetDays: 0, homeTipDismissed: false, account: null, signedIn: false, dirty: false }; }
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
@@ -34,24 +35,152 @@
   const orgCode = () => (store.account && store.account.org) || LINK_ORG;
   const startsAtWeek2 = () => { const o = D.ORGANIZATIONS[orgCode()]; return !!(o && o.startAtWeek2); };
 
-  /* ---------- Sign in with a 6-digit email code ----------
-     TEST MODE (now): no email is sent, any 6 digits work, the account is kept on this device.
-     With Supabase, only these two functions change:
-       sendCode   → supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: isNew, data: profile } })
-                    (shouldCreateUser: false on Sign in, so a code only goes to emails that already signed up)
-       verifyCode → supabase.auth.verifyOtp({ email, token: code, type: "email" })
-     The Supabase "Magic Link" email template must show {{ .Token }} so people get a code, not a link. */
-  const TEST_AUTH = true;
+  /* ---------- Supabase: login with a 6-digit email code, and saving ----------
+     Project "Coaching Starts With You". The publishable key is meant to be public: what each coach can
+     read or write is enforced by the database's security rules (each coach only sees their own rows).
+     Emails go out through Resend (team@mail.coaching-startswithyou.com). The "Confirm signup" and
+     "Magic Link" email templates show {{ .Token }}, so people get a code, not a link. */
+  const SUPABASE_URL = "https://guwjgnvqygnxlpltmvop.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_HTh_pjczopYxfFSl7pzvyQ_4keK6ChT";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  });
+
+  // Supabase's error → words a coach understands.
+  function authError(err, fallback) {
+    const m = ((err && (err.code || "") + " " + (err.message || "")) || "").toLowerCase();
+    if (/signup.*not allowed|otp_disabled|user not found/.test(m))
+      return "We couldn't find an account with this email. Check it, or go back and sign up.";
+    if (/rate|too many|429|seconds/.test(m)) return "Too many tries. Wait a minute, then try again.";
+    if (/fetch|network|failed to|load failed/.test(m)) return "No connection. Check your signal and try again.";
+    if (/expired|invalid|otp/.test(m)) return "That code didn't work or has expired. Check it, or send a new code.";
+    return fallback;
+  }
+
   const Auth = {
+    // Sign up: creates the login (the sign-up details ride along, so they're never lost).
+    // Sign in: shouldCreateUser false, so a code only goes to emails that already signed up.
     async sendCode(email, isNew) {
-      if (!isNew && !(store.account && store.account.email === email))
-        return { error: "We couldn't find an account with this email. Check it, or go back and sign up." };
-      return {};
+      const options = { shouldCreateUser: isNew };
+      if (isNew) options.data = signupProfile();
+      try {
+        const { error } = await sb.auth.signInWithOtp({ email, options });
+        return error ? { error: authError(error, "We couldn't send the code. Try again in a moment.") } : {};
+      } catch (e) { return { error: authError(e, "No connection. Check your signal and try again.") }; }
     },
     async verifyCode(email, code) {
-      return /^\d{6}$/.test(code) ? {} : { error: "That code didn't work. Check it and try again." };
+      try {
+        const { data, error } = await sb.auth.verifyOtp({ email, token: code, type: "email" });
+        if (error || !data.session) return { error: authError(error, "That code didn't work. Check it and try again.") };
+        return { user: data.session.user };
+      } catch (e) { return { error: authError(e, "No connection. Check your signal and try again.") }; }
     }
   };
+  // What the sign-up form becomes on the account.
+  function signupProfile() {
+    const s = ui.su;
+    return { firstName: s.first.trim(), lastName: s.last.trim(), gender: s.gender, ageBracket: s.age,
+      org: LINK_ORG, orgName: LINK_ORG ? D.ORGANIZATIONS[LINK_ORG].name : null };
+  }
+
+  /* ---------- Sync with Supabase ----------
+     The phone keeps working from its own copy (store), so the app still works with no signal.
+     Changes are marked (store.dirty for the profile, record.synced = false for a check) and pushed
+     by pushAll(), which runs after every change, when the app opens and when the signal comes back.
+     Pushes are "upserts" (insert or replace by id), so sending the same thing twice is harmless. */
+  const iso = t => (t ? new Date(t).toISOString() : null);
+  function profileRow(uid, email) {
+    const a = store.account, f = store.firstAction, c = store.action;
+    return {
+      id: uid, email: a.email || email, first_name: a.firstName, last_name: a.lastName,
+      gender: a.gender, age_bracket: a.ageBracket, org: a.org || null, org_name: a.orgName || null,
+      start_date: iso(store.startDate),
+      first_action_when: f ? f.when : null, first_action_will: f ? f.will : null, first_action_date: f ? iso(f.date) : null,
+      current_action_when: c ? c.when : null, current_action_will: c ? c.will : null, current_action_date: c ? iso(c.date) : null
+    };
+  }
+  function checkRow(uid, r) {
+    const a = r.action || {};
+    return {
+      id: r.id, user_id: uid, checkpoint: r.checkpoint, checked_at: iso(r.date),
+      q1: r.answers[0], q2: r.answers[1], q3: r.answers[2], q4: r.answers[3], q5: r.answers[4],
+      score: r.score, max_score: r.max || 10, status: r.status, abc: r.abc || D.STATUS[r.status].abc,
+      roadblock: r.roadblock || null,
+      action_when: a.when || null, action_will: a.will || null, action_choice: a.choice || null,
+      action_changed: a.changed == null ? null : !!a.changed
+    };
+  }
+  let pushing = null;
+  // Push everything not yet saved. Returns true when nothing is left waiting.
+  function pushAll() {
+    if (pushing) return pushing;
+    pushing = (async () => {
+      try {
+        const { data } = await sb.auth.getSession();
+        const user = data.session && data.session.user;
+        if (!user) return false;
+        if (!store.account) return true;   // logged in but nothing on this phone yet: nothing to push
+        if (store.dirty) {
+          const { error } = await sb.from("profiles").upsert(profileRow(user.id, user.email));
+          if (error) return false;
+          store.dirty = false; save();
+        }
+        for (const r of store.records.filter(r => !r.synced)) {
+          const { error } = await sb.from("checks").upsert(checkRow(user.id, r));
+          if (error) return false;
+          r.synced = true; save();
+        }
+        return true;
+      } catch (e) { return false; }      // offline: try again later
+      finally { pushing = null; }
+    })();
+    return pushing;
+  }
+  // Load this coach's account, action and checks from Supabase into the phone's copy.
+  // Returns "ok", "new" (logged in but no profile saved yet) or "offline".
+  async function pullAll(user) {
+    try {
+      const [p, c] = await Promise.all([
+        sb.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+        sb.from("checks").select("*").eq("user_id", user.id).order("checked_at", { ascending: true })
+      ]);
+      if (p.error || c.error) return "offline";
+      if (!p.data) return "new";
+      const P = p.data;
+      // Start from a clean copy, so a previous person's data on this phone never mixes in.
+      const keep = { demoOffsetDays: store.demoOffsetDays, homeTipDismissed: store.homeTipDismissed };
+      store = Object.assign(fresh(), keep, {
+        signedIn: true, dirty: false,
+        account: { email: P.email, firstName: P.first_name, lastName: P.last_name, gender: P.gender, ageBracket: P.age_bracket,
+          org: P.org, orgName: P.org_name, createdAt: P.created_at },
+        startDate: P.start_date,
+        firstAction: P.first_action_when ? { when: P.first_action_when, will: P.first_action_will, date: P.first_action_date } : null,
+        action: P.current_action_when ? { when: P.current_action_when, will: P.current_action_will, date: P.current_action_date } : null,
+        records: c.data.map(R => {
+          const answers = [R.q1, R.q2, R.q3, R.q4, R.q5];
+          return { id: R.id, checkpoint: R.checkpoint, date: R.checked_at, answers, score: R.score, max: R.max_score,
+            status: R.status, abc: R.abc, roadblock: R.roadblock, tips: tipsFor(answers), synced: true,
+            action: R.action_when ? { when: R.action_when, will: R.action_will, choice: R.action_choice, changed: R.action_changed } : undefined };
+        })
+      });
+      save();
+      return "ok";
+    } catch (e) { return "offline"; }
+  }
+  // App opens: still logged in? Push anything waiting, then refresh from Supabase (picks up another phone's checks).
+  async function syncOnOpen() {
+    let user = null;
+    try { const { data } = await sb.auth.getSession(); user = data.session && data.session.user; } catch (e) { /* offline */ }
+    if (!user) {
+      // The login has gone (signed out, or data from the old test mode): sign in again; the phone's copy stays until then.
+      if (store.signedIn) { store.signedIn = false; save(); if (ui.view === "home" || ui.view === "landing") go("landing"); }
+      return;
+    }
+    if (!(await pushAll())) return;      // something still waiting (offline): keep the phone's copy as it is
+    const before = JSON.stringify(store);
+    if ((await pullAll(user)) === "ok" && JSON.stringify(store) !== before && (ui.view === "home" || ui.view === "landing")) render();
+  }
+  window.addEventListener("online", () => pushAll());
 
   /* ---------- UI state (not saved) ---------- */
   const ui = {
@@ -284,7 +413,6 @@
       <p class="cc-field-label cc-field-gap">ENTER THE 6-DIGIT CODE WE SENT YOU</p>
       <label class="cc-code" id="code-wrap"><input id="code" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="6" value="${esc(c)}" aria-label="6-digit code">${boxes}</label>
       ${authErr()}
-      ${TEST_AUTH ? `<p class="dx-note cc-test-note">Test mode: no email is sent yet. Any 6 digits work.</p>` : ""}
       <div class="cc-links">
         <button class="cc-link" data-act="resend"${wait > 0 ? " disabled" : ""}>${wait > 0 ? `NEW CODE IN ${wait}S` : "SEND A NEW CODE"}</button>
         <button class="cc-link" data-act="authBack">CHANGE EMAIL</button>
@@ -553,19 +681,30 @@
     // Organization that starts at Week 2: no workshop-day screen, straight into the Week 2 check.
     go(store.action || startsAtWeek2() ? "mirror" : "action");
   }
-  /* Code checked: save the account (sign up) and carry on.
+  /* Code checked: load this person's account, action and checks from Supabase, or create the account (first sign-up).
      Workshop day (no action yet) → write the first action. Already has one → SEE IT. */
-  function signedIn() {
-    if (ui.authMode === "signup") {
-      const s = ui.su;
-      // org = the code from their link ("img"), or null for the plain link. orgName kept too, for readable exports.
-      store.account = { firstName: s.first.trim(), lastName: s.last.trim(), email: authEmail(), gender: s.gender, ageBracket: s.age,
-        org: LINK_ORG, orgName: LINK_ORG ? D.ORGANIZATIONS[LINK_ORG].name : null,
-        createdAt: new Date(now()).toISOString() };
+  async function signedIn(user) {
+    const got = await pullAll(user);
+    if (got === "offline") {
+      ui.authErr = "Signed in, but we couldn't load your account. Check your signal and enter a new code.";
+      try { await sb.auth.signOut({ scope: "local" }); } catch (e) { /* offline */ }
+      ui.code = ""; return go("code");
     }
-    store.signedIn = true; save();
+    if (got === "new") {
+      // First time: the details from the sign-up form, or the ones saved with the login (signed up, then confirmed later on Sign in).
+      // org = the code from their link ("golf-department"), or null for the plain link. orgName kept too, for readable exports.
+      const m = user.user_metadata || {};
+      const p = ui.authMode === "signup" ? signupProfile() : m.firstName ? m : null;
+      if (!p) { ui.authErr = "We couldn't find your sign-up details. Go back and sign up."; ui.code = ""; return go("code"); }
+      const keep = { demoOffsetDays: store.demoOffsetDays, homeTipDismissed: store.homeTipDismissed };
+      store = Object.assign(fresh(), keep, {
+        account: { email: user.email, firstName: p.firstName, lastName: p.lastName, gender: p.gender, ageBracket: p.ageBracket,
+          org: p.org || null, orgName: p.orgName || null, createdAt: new Date().toISOString() },
+        signedIn: true, dirty: true
+      });
+      save(); pushAll();
+    }
     ui.code = ""; ui.authErr = "";
-    // (Supabase later: load this person's start date, action and saved checks into store here.)
     // The "check is ready" pop-up shows on SEE IT if one is due.
     ui.result = null; ui.actMode = null; ui.actChoice = null;
     if (store.action) return go("home");
@@ -585,9 +724,9 @@
     if (ui.authBusy || ui.code.length !== 6) return;
     ui.authBusy = true;
     const r = await Auth.verifyCode(authEmail(), ui.code);
+    if (r.error) { ui.authBusy = false; ui.authErr = r.error; ui.code = ""; render(); const c = document.getElementById("code"); if (c) c.focus(); return; }
+    await signedIn(r.user);
     ui.authBusy = false;
-    if (r.error) { ui.authErr = r.error; ui.code = ""; render(); const c = document.getElementById("code"); if (c) c.focus(); return; }
-    signedIn();
   }
   /* Save the action. Workshop day: it starts the programme clock (Week 2 is 14 days from now).
      At a check: saved on the check's record (history) and as the current action. */
@@ -596,7 +735,7 @@
     if (!ui.result) {
       const date = new Date(now()).toISOString();
       store.action = { ...a, date }; store.firstAction = { ...a, date }; store.startDate = date;
-      save();
+      store.dirty = true; save(); pushAll();
       ui.tab = "see"; ui.chip = null; ui.readyShown = true;
       return go("home");
     }
@@ -632,7 +771,8 @@
     };
   }
   function finish() {
-    store.records.push(ui.result); save();
+    // The check and the (possibly new) current action both go to Supabase.
+    store.records.push({ ...ui.result, synced: false }); store.dirty = true; save(); pushAll();
     ui.result = null; ui.tab = "see"; ui.chip = store.records.length - 1; ui.gateway = false; ui.readyShown = true;
     go("home");
   }
@@ -686,11 +826,14 @@
     dismissTip() { store.homeTipDismissed = true; save(); render(); },
     export: exportCSV,
     testSkip() { const nc = nextCheck(); if (!nc) return; store.demoOffsetDays += nc.left; save(); ui.readyShown = true; begin(); },
-    // TEST ONLY (?demo): sign out, keeping the account, to try Sign in.
-    demoSignOut() { store.signedIn = false; save(); render(); },
+    // TEST ONLY (?demo): sign out to try Sign in (the account and checks stay saved in Supabase).
+    async demoSignOut() { try { await sb.auth.signOut({ scope: "local" }); } catch (e) { /* offline */ } store.signedIn = false; save(); render(); },
     demoSkip() { store.demoOffsetDays += 14; save(); ui.readyShown = false; ui.popup = null; render(); },
     askReset() { ui.popup = "reset"; render(); },
+    // TEST ONLY: clears this phone and signs out. What's already saved in Supabase stays there
+    // (delete it in the Supabase dashboard, or sign up again with a different email to start fresh).
     resetAll() {
+      sb.auth.signOut({ scope: "local" }).catch(() => {});
       try { localStorage.removeItem(KEY); } catch (e) { /* storage blocked */ }
       store = fresh();
       Object.assign(ui, { view: "landing", tab: "see", popup: null, gateway: false, chip: null, periodOpen: false, readyShown: false,
@@ -825,4 +968,5 @@
   }
 
   render();
+  syncOnOpen();
 })();
