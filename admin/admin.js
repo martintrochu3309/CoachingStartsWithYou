@@ -42,7 +42,7 @@
 
   /* ---------- State ---------- */
   const ui = { view: "loading", email: "", code: "", err: "", busy: false, resentAt: 0,
-    org: "all", search: "", sort: "attention", open: null, live: false, updated: null, newRows: new Set(), toast: null };
+    org: "all", check: "latest", search: "", sort: "attention", open: null, live: false, updated: null, newRows: new Set(), toast: null };
   let data = { profiles: [], checks: [] };
   let knownChecks = null;            // check ids seen so far (to spot new ones arriving live)
 
@@ -183,8 +183,17 @@
       return res;
     });
 
-    const road = {}; let roadN = 0;
-    coaches.forEach(c => { if (!c.latest) return; roadN++; const k = c.latest.roadblock || "none"; road[k] = (road[k] || 0) + 1; });
+    // The "Check" filter: each coach's latest check, or one chosen week.
+    const rowAt = c => (ui.check === "latest" ? c.latest : c.done[ui.check]) || null;
+    const road = {}, abc = { A: 0, B: 0, C: 0 }; let roadN = 0;
+    coaches.forEach(c => {
+      const r = rowAt(c); if (!r) return;
+      roadN++; const k = r.roadblock || "none"; road[k] = (road[k] || 0) + 1; abc[r.abc]++;
+    });
+
+    // Follow-through: how many coaches got to each stage, and how many could have by now (check already open).
+    const stages = [{ label: "Workshop", done: coaches.length, open: coaches.length, note: "Signed up" },
+      ...CPS.map(cp => ({ label: cp.label, done: coaches.filter(c => c.done[cp.key]).length, open: coaches.filter(c => c.done[cp.key] || isOpen(c.p, cp, now)).length }))];
 
     const counts = {
       coaches: coaches.length,
@@ -201,7 +210,21 @@
       : ui.sort === "recent"
         ? (a, b) => b.last - a.last
         : (a, b) => order[a.next.kind] - order[b.next.kind] || (b.next.late || 0) - (a.next.late || 0) || (a.next.due || 0) - (b.next.due || 0));
-    return { coaches, list, weeks, moves, road, roadN, counts };
+    return { coaches, list, weeks, moves, road, roadN, abc, stages, counts };
+  }
+  // Has this check opened for this coach yet? (Week 2 = 14 days after the workshop, etc.)
+  function isOpen(p, cp, now) {
+    if (p.start_date) return now >= new Date(p.start_date).getTime() + cp.day * DAY;
+    return cp === CPS[0] && startsAtWeek2(p.org);     // workshop already happened: Week 2 open from sign-up
+  }
+  const checkName = () => (ui.check === "latest" ? "each coach's latest check" : CPS.find(cp => cp.key === ui.check).label);
+  // Clean whole-number axis: 0 … top in steps of 1, 2, 5, 10…
+  function yTicks(max) {
+    max = Math.max(1, max);
+    const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000].find(s => max / s <= 5) || Math.ceil(max / 5);
+    const top = Math.ceil(max / step) * step, ticks = [];
+    for (let v = 0; v <= top; v += step) ticks.push(v);
+    return { top, ticks };
   }
   // Where is this coach in the programme? (the next check, and whether it's open yet)
   function nextState(p, done, now) {
@@ -221,7 +244,7 @@
   /* ---------- Views: sign in ---------- */
   const errLine = () => (ui.err ? `<p class="dx-hint cc-auth-err" role="alert">${esc(ui.err)}</p>` : "");
   function vLogin() {
-    return `<section class="dx-screen cc-auth ad-auth">
+    return `<section class="dx-screen cc-auth dsh-auth">
       <img class="cc-logo" src="../assets/logo.png" alt="Coaching starts with you" width="720" height="258">
       <p class="dx-label dx-label--muted">ADMIN</p>
       <h1 class="dx-title">DASHBOARD</h1>
@@ -236,7 +259,7 @@
   function vCode() {
     const c = ui.code, wait = Math.ceil((ui.resentAt + 30000 - Date.now()) / 1000);
     const boxes = [0, 1, 2, 3, 4, 5].map(k => `<span class="cc-code-box${k === Math.min(c.length, 5) ? " is-next" : ""}">${esc(c[k] || "")}</span>`).join("");
-    return `<section class="dx-screen cc-auth ad-auth">
+    return `<section class="dx-screen cc-auth dsh-auth">
       <div class="cc-top"><button class="cc-back" data-act="toLogin" aria-label="Back">${ICON.back}</button></div>
       <h1 class="dx-title" style="margin-top:26px">CHECK YOUR EMAIL</h1>
       <div class="cc-field"><span class="cc-field-label">EMAIL</span><p class="cc-input cc-input--read">${esc(ui.email.trim().toLowerCase())}</p></div>
@@ -250,7 +273,7 @@
     </section>`;
   }
   function vDenied() {
-    return `<section class="dx-screen cc-auth ad-auth">
+    return `<section class="dx-screen cc-auth dsh-auth">
       <img class="cc-logo" src="../assets/logo.png" alt="Coaching starts with you" width="720" height="258">
       <p class="dx-label dx-label--muted">ADMIN</p>
       <h1 class="dx-title">NO DASHBOARD ACCESS</h1>
@@ -259,7 +282,7 @@
       <div class="cc-foot"><button class="dx-btn dx-btn--outline" data-act="toLogin">USE ANOTHER EMAIL</button></div>
     </section>`;
   }
-  const vLoading = () => `<section class="dx-screen cc-auth ad-auth"><p class="dx-intro" style="margin-top:40vh;text-align:center">Loading…</p></section>`;
+  const vLoading = () => `<section class="dx-screen cc-auth dsh-auth"><p class="dx-intro" style="margin-top:40vh;text-align:center">Loading…</p></section>`;
 
   /* ---------- Views: dashboard ---------- */
   // Organizations in data.js plus any found on coaches ("" = signed up through the plain link).
@@ -269,39 +292,42 @@
       .map(([v, l]) => `<option value="${esc(v)}"${ui.org === v ? " selected" : ""}>${esc(l)}</option>`).join("");
   }
   function vShell() {
-    return `<div class="ad">
-      <header class="ad-head">
-        <div class="ad-brand"><img class="ad-logo" src="../assets/logo.png" alt="Coaching starts with you" width="720" height="258">
-          <div><p class="dx-label dx-label--muted">ADMIN DASHBOARD</p><h1 class="dx-title dx-title--xl ad-title">FOLLOW-THROUGH</h1></div></div>
-        <div class="ad-head-r"><span class="ad-live" id="live"><i></i><span></span></span><span class="ad-updated" id="updated"></span>
-          <button class="ad-link" data-act="signOut">SIGN OUT</button></div>
+    return `<div class="dsh">
+      <header class="dsh-head">
+        <div class="dsh-brand"><img class="dsh-logo" src="../assets/logo.png" alt="Coaching starts with you" width="720" height="258">
+          <div><p class="dx-label dx-label--muted">ADMIN DASHBOARD</p><h1 class="dx-title dx-title--xl dsh-title">FOLLOW-THROUGH</h1></div></div>
+        <div class="dsh-head-r"><span class="dsh-live" id="live"><i></i><span></span></span><span class="dsh-updated" id="updated"></span>
+          <button class="dsh-link" data-act="signOut">SIGN OUT</button></div>
       </header>
-      <div class="ad-filters">
+      <div class="dsh-filters">
         <label class="cc-field"><span class="cc-field-label">ORGANIZATION</span>
           <span class="cc-select"><select class="cc-input" id="f-org">${orgOptions()}</select>${ICON.down}</span></label>
-        <div class="ad-spacer"></div>
-        <button class="ad-btn-sm" data-act="csv">DOWNLOAD CSV</button>
+        <label class="cc-field"><span class="cc-field-label">CHECK</span>
+          <span class="cc-select"><select class="cc-input" id="f-check">${[["latest", "Latest check"], ...CPS.map(cp => [cp.key, cp.label])]
+            .map(([v, l]) => `<option value="${v}"${ui.check === v ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>${ICON.down}</span></label>
+        <div class="dsh-spacer"></div>
+        <button class="dsh-btn-sm" data-act="csv">DOWNLOAD CSV</button>
       </div>
       <div id="content"></div>
-      <p class="ad-foot">Overdue = a check that has been open for ${OVERDUE_DAYS}+ days. Each coach counts once per week (their latest check for that week).</p>
+      <p class="dsh-foot">Overdue = a check that has been open for ${OVERDUE_DAYS}+ days. Each coach counts once per week (their latest check for that week).</p>
     </div>`;
   }
 
   function vContent(m) {
     if (ui.err && !data.profiles.length) return `<p class="dx-hint" role="alert" style="margin-top:22px">${esc(ui.err)}</p>`;
     const N = m.counts.coaches;
-    const kpi = (label, value, sub, frac, dark) => `<div class="ad-kpi${dark ? " ad-kpi--dark" : ""}"><p class="ad-kpi-label">${label}</p>
-      <p class="ad-kpi-value">${value}</p>${frac != null ? `<span class="ad-meter" role="img" aria-label="${pct(frac[0], frac[1])}%"><i style="width:${pct(frac[0], frac[1])}%"></i></span>` : ""}
-      ${sub ? `<p class="ad-kpi-sub">${sub}</p>` : ""}</div>`;
-    const kpis = `<div class="ad-kpis">
+    const kpi = (label, value, sub, frac, dark) => `<div class="dsh-kpi${dark ? " dsh-kpi--dark" : ""}"><p class="dsh-kpi-label">${label}</p>
+      <p class="dsh-kpi-value">${value}</p>${frac != null ? `<span class="dsh-meter" role="img" aria-label="${pct(frac[0], frac[1])}%"><i style="width:${pct(frac[0], frac[1])}%"></i></span>` : ""}
+      ${sub ? `<p class="dsh-kpi-sub">${sub}</p>` : ""}</div>`;
+    const kpis = `<div class="dsh-kpis">
       ${kpi("COACHES", N, ui.org === "all" ? "Signed up, all organizations" : esc(orgName(ui.org)), null, true)}
       ${CPS.map((cp, i) => kpi(cp.label.toUpperCase() + " DONE", `${m.counts.done[i]}<small>/ ${N}</small>`, `${pct(m.counts.done[i], N)}% of coaches`, [m.counts.done[i], N])).join("")}
       ${kpi("WAITING ON", m.counts.ready + m.counts.overdue,
-        m.counts.overdue ? `<span class="ad-flag">${ICON.alert}${m.counts.overdue} overdue</span>` : "Check open, not done yet")}
+        m.counts.overdue ? `<span class="dsh-flag">${ICON.alert}${m.counts.overdue} overdue</span>` : "Check open, not done yet")}
     </div>`;
-    if (!N) return errBanner() + kpis + `<div class="ad-card" style="margin-top:16px"><p class="ad-empty" style="margin:0">No coaches have signed up${ui.org === "all" ? "" : " in this organization"} yet.</p></div>`;
-    return errBanner() + kpis + `<div class="ad-grid">
-      ${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardCoaches(m)}
+    if (!N) return errBanner() + kpis + `<div class="dsh-card" style="margin-top:16px"><p class="dsh-empty" style="margin:0">No coaches have signed up${ui.org === "all" ? "" : " in this organization"} yet.</p></div>`;
+    return errBanner() + kpis + `<div class="dsh-grid">
+      ${cardFollow(m)}${cardBars(m)}${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardCoaches(m)}
     </div>`;
   }
   const errBanner = () => (ui.err ? `<p class="dx-hint" role="alert" style="margin-top:18px">${esc(ui.err)}</p>` : "");
@@ -309,20 +335,20 @@
   // Where coaches are, each week: A / B / C share (tall segmented bars, one per week).
   function cardABC(m) {
     const rows = m.weeks.map(w => {
-      const label = `<span class="ad-row-label">${esc(w.cp.label)}<small>${w.n} coach${w.n === 1 ? "" : "es"}</small></span>`;
-      if (!w.n) return `<div class="ad-seg-row">${label}<div class="ad-seg-empty">No checks yet</div></div>`;
+      const label = `<span class="dsh-row-label">${esc(w.cp.label)}<small>${w.n} coach${w.n === 1 ? "" : "es"}</small></span>`;
+      if (!w.n) return `<div class="dsh-seg-row">${label}<div class="dsh-seg-empty">No checks yet</div></div>`;
       const parts = ["A", "B", "C"].filter(L => w.count[L]).map(L => {
         const share = pct(w.count[L], w.n);
-        return `<span class="ad-seg-part s-${L}" style="flex:${w.count[L]}" tabindex="0"
+        return `<span class="dsh-seg-part s-${L}" style="flex:${w.count[L]}" tabindex="0"
           data-tip="<b>${w.cp.label} · ${L}</b> ${esc(ABC_NAME(L))}<br>${w.count[L]} coach${w.count[L] === 1 ? "" : "es"} (${share}%)">${share >= 14 ? share + "%" : ""}</span>`;
       }).join("");
       const aria = ["A", "B", "C"].map(L => `${L} ${w.count[L]} (${pct(w.count[L], w.n)}%)`).join(", ");
-      return `<div class="ad-seg-row">${label}<div class="ad-seg" role="img" aria-label="${esc(w.cp.label)}: ${aria}">${parts}</div></div>`;
+      return `<div class="dsh-seg-row">${label}<div class="dsh-seg" role="img" aria-label="${esc(w.cp.label)}: ${aria}">${parts}</div></div>`;
     }).join("");
-    return `<section class="ad-card"><h2 class="ad-card-title">Where coaches are</h2>
-      <p class="ad-card-sub">Share of coaches at A, B and C at each check. The goal: the dark part grows week by week.</p>
-      <div class="ad-seg-rows">${rows}</div>
-      <ul class="ad-legend">${["A", "B", "C"].map(L => `<li><span class="ad-sw s-${L}"></span><b>${L}</b>${esc(ABC_NAME(L))}</li>`).join("")}</ul>
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Where coaches are</h2>
+      <p class="dsh-card-sub">Share of coaches at A, B and C at each check. The goal: the dark part grows week by week.</p>
+      <div class="dsh-seg-rows">${rows}</div>
+      <ul class="dsh-legend">${["A", "B", "C"].map(L => `<li><span class="dsh-sw s-${L}"></span><b>${L}</b>${esc(ABC_NAME(L))}</li>`).join("")}</ul>
     </section>`;
   }
 
@@ -332,42 +358,91 @@
     const grid = ticks.map(t => `<i class="${t === 0 ? "base" : ""}" style="bottom:${(t / 10) * H}px"></i>`).join("");
     const axis = ticks.map(t => `<span style="bottom:${34 + (t / 10) * H}px">${t}</span>`).join("");
     const cols = m.weeks.map(w => {
-      const lab = `<span class="ad-col-lab"><b>${esc(w.cp.label)}</b><small>${w.n} coach${w.n === 1 ? "" : "es"}</small></span>`;
-      if (w.avg == null) return `<div class="ad-col"><span class="ad-col-none">No checks</span>${lab}</div>`;
+      const lab = `<span class="dsh-col-lab"><b>${esc(w.cp.label)}</b><small>${w.n} coach${w.n === 1 ? "" : "es"}</small></span>`;
+      if (w.avg == null) return `<div class="dsh-col"><span class="dsh-col-none">No checks</span>${lab}</div>`;
       const v = w.avg.toFixed(1);
-      return `<div class="ad-col"><span class="ad-col-val">${v}</span><span class="ad-col-bar" style="height:${(w.avg / 10) * H}px"></span>${lab}
-        <span class="ad-col-hit" tabindex="0" data-tip="<b>${w.cp.label}</b><br>Average score ${v} / 10<br>${w.n} coach${w.n === 1 ? "" : "es"}"></span></div>`;
+      return `<div class="dsh-col"><span class="dsh-col-val">${v}</span><span class="dsh-col-bar" style="height:${(w.avg / 10) * H}px"></span>${lab}
+        <span class="dsh-col-hit" tabindex="0" data-tip="<b>${w.cp.label}</b><br>Average score ${v} / 10<br>${w.n} coach${w.n === 1 ? "" : "es"}"></span></div>`;
     }).join("");
-    return `<section class="ad-card"><h2 class="ad-card-title">Average score</h2>
-      <p class="ad-card-sub">Out of 10 (5 questions: Yes = 2, Partly = 1, No = 0).</p>
-      <div class="ad-cols"><div class="ad-cols-axis">${axis}</div><div class="ad-cols-plot">${grid}</div>${cols}</div>
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Average score</h2>
+      <p class="dsh-card-sub">Out of 10 (5 questions: Yes = 2, Partly = 1, No = 0).</p>
+      <div class="dsh-cols"><div class="dsh-cols-axis">${axis}</div><div class="dsh-cols-plot">${grid}</div>${cols}</div>
     </section>`;
   }
 
   // Who moved up, stayed, or slipped between two checks (coaches who did both).
   function cardMoves(m) {
-    const box = mv => `<div class="ad-move"><p class="ad-move-head">${esc(mv.from.label)} → ${esc(mv.to.label)}</p>
+    const box = mv => `<div class="dsh-move"><p class="dsh-move-head">${esc(mv.from.label)} → ${esc(mv.to.label)}</p>
       ${mv.n ? [["up", "Moved up", ICON.up], ["same", "Stayed the same", ICON.same], ["down", "Slipped back", ICON.fall]].map(([k, l, ic]) =>
-        `<div class="ad-move-row">${ic}<b>${mv[k]}</b>${l}</div>`).join("") : `<p class="ad-empty">Nobody has done both yet.</p>`}</div>`;
-    return `<section class="ad-card"><h2 class="ad-card-title">Movement</h2>
-      <p class="ad-card-sub">Coaches whose letter went up (e.g. C → B, B → A), stayed, or went down between two checks.</p>
-      <div class="ad-moves">${m.moves.map(box).join("")}</div></section>`;
+        `<div class="dsh-move-row">${ic}<b>${mv[k]}</b>${l}</div>`).join("") : `<p class="dsh-empty">Nobody has done both yet.</p>`}</div>`;
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Movement</h2>
+      <p class="dsh-card-sub">Coaches whose letter went up (e.g. C → B, B → A), stayed, or went down between two checks.</p>
+      <div class="dsh-moves">${m.moves.map(box).join("")}</div></section>`;
   }
 
-  // Roadblocks at each coach's most recent check: one series, horizontal bars.
+  // Follow-through line: people (up) at each stage (along): Workshop → Week 2 → Week 4 → Week 6.
+  // Black = completed. Grey = could have by now (the check has opened), so "not open yet" never looks like drop-off.
+  function cardFollow(m) {
+    const S = m.stages, { top, ticks } = yTicks(Math.max(...S.map(s => s.open)));
+    const x = i => (i / (S.length - 1)) * 100, y = v => (v / top) * 100;
+    // A step nobody could have reached yet (its check hasn't opened for anyone) is left off the line, not drawn as 0.
+    const on = (s, i) => i === 0 || s.open > 0;
+    const line = key => S.map((s, i) => (on(s, i) ? `${x(i)},${100 - y(s[key])}` : null)).filter(Boolean).join(" ");
+    const gap = S.some(s => s.open !== s.done);
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Follow-through</h2>
+      <p class="dsh-card-sub">How many coaches completed each step of the programme.</p>
+      <div class="dsh-chart">
+        <div class="dsh-plot">
+          ${ticks.map(t => `<i class="dsh-gl${t === 0 ? " base" : ""}" style="bottom:${y(t)}%"></i><span class="dsh-yl" style="bottom:${y(t)}%">${t}</span>`).join("")}
+          <svg class="dsh-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            ${gap ? `<polyline class="open" points="${line("open")}"/>` : ""}<polyline class="done" points="${line("done")}"/></svg>
+          ${S.map((s, i) => `${on(s, i) ? `${gap && s.open !== s.done ? `<span class="dsh-pt open" style="left:${x(i)}%;bottom:${y(s.open)}%"></span>` : ""}
+            <span class="dsh-pt" style="left:${x(i)}%;bottom:${y(s.done)}%"></span>
+            <span class="dsh-pt-val" style="left:${x(i)}%;bottom:${y(s.done)}%">${s.done}</span>` : ""}
+            <span class="dsh-xl" style="left:${x(i)}%">${esc(s.label)}${on(s, i) ? "" : "<small>not open yet</small>"}</span>
+            <span class="dsh-hit" style="left:${x(i)}%" tabindex="0" data-tip="<b>${esc(s.label)}</b><br>${!i ? `${s.done} coaches signed up`
+              : on(s, i) ? `${s.done} completed · ${s.open} could have by now` : "This check hasn't opened for anyone yet"}"></span>`).join("")}
+        </div>
+      </div>
+      <ul class="dsh-legend"><li><span class="dsh-key"></span>Completed</li>${gap ? `<li><span class="dsh-key open"></span>Check open by now</li>` : ""}</ul>
+      <table class="dsh-sr"><caption>Follow-through</caption><tr><th>Stage</th><th>Completed</th><th>Open by now</th></tr>
+        ${S.map(s => `<tr><td>${esc(s.label)}</td><td>${s.done}</td><td>${s.open}</td></tr>`).join("")}</table>
+    </section>`;
+  }
+
+  // A / B / C bar chart: people (up) at A, B and C (along), at the check chosen in the filter.
+  function cardBars(m) {
+    const n = m.abc.A + m.abc.B + m.abc.C, { top, ticks } = yTicks(Math.max(m.abc.A, m.abc.B, m.abc.C));
+    const y = v => (v / top) * 100;
+    const body = !n ? `<p class="dsh-empty">No checks ${ui.check === "latest" ? "yet" : "at " + esc(checkName()) + " yet"}.</p>` : `<div class="dsh-chart">
+        <div class="dsh-plot">
+          ${ticks.map(t => `<i class="dsh-gl${t === 0 ? " base" : ""}" style="bottom:${y(t)}%"></i><span class="dsh-yl" style="bottom:${y(t)}%">${t}</span>`).join("")}
+          <div class="dsh-bars">${["A", "B", "C"].map(L => `<div class="dsh-bar-slot" tabindex="0"
+            data-tip="<b>${L}</b> ${esc(ABC_NAME(L))}<br>${m.abc[L]} of ${n} coach${n === 1 ? "" : "es"} (${pct(m.abc[L], n)}%)">
+            <span class="dsh-bar-val" style="bottom:${y(m.abc[L])}%">${m.abc[L]}</span>
+            <span class="dsh-bar s-${L}${m.abc[L] ? "" : " is-zero"}" style="height:${y(m.abc[L])}%"></span>
+            <span class="dsh-bar-x"><span class="dsh-letter is-${L}">${L}</span><small>${esc(ABC_NAME(L))}</small></span></div>`).join("")}</div>
+        </div>
+      </div>`;
+    return `<section class="dsh-card"><h2 class="dsh-card-title">A · B · C</h2>
+      <p class="dsh-card-sub">How many coaches are at A, B and C, at ${esc(checkName())} (${n} coach${n === 1 ? "" : "es"}). Change it with the Check filter at the top.</p>
+      ${body}</section>`;
+  }
+
+  // Roadblocks at the chosen check: one series, horizontal bars.
   function cardRoad(m) {
     const keys = [...Object.keys(D.ROADBLOCKS).filter(k => D.ROADBLOCK_RULES.some(r => r.key === k)), "none"];
     const max = Math.max(1, ...keys.map(k => m.road[k] || 0));
     const rows = keys.map(k => {
       const n = m.road[k] || 0, R = D.ROADBLOCKS[k];
       const name = R ? R.name : "None showing", sub = R ? R.gateway : "All five answers Yes";
-      return `<div class="ad-hbar"><span class="ad-hbar-label">${esc(name)}<small>${esc(sub)}</small></span>
-        <span class="ad-hbar-track" tabindex="0" data-tip="<b>${esc(name)}</b><br>${n} of ${m.roadN} coach${m.roadN === 1 ? "" : "es"} (${pct(n, m.roadN)}%)">
-          <span class="ad-hbar-bar${n ? "" : " is-zero"}" style="width:${(n / max) * 80}%"></span><span class="ad-hbar-val">${n}</span></span></div>`;
+      return `<div class="dsh-hbar"><span class="dsh-hbar-label">${esc(name)}<small>${esc(sub)}</small></span>
+        <span class="dsh-hbar-track" tabindex="0" data-tip="<b>${esc(name)}</b><br>${n} of ${m.roadN} coach${m.roadN === 1 ? "" : "es"} (${pct(n, m.roadN)}%)">
+          <span class="dsh-hbar-bar${n ? "" : " is-zero"}" style="width:${(n / max) * 80}%"></span><span class="dsh-hbar-val">${n}</span></span></div>`;
     }).join("");
-    return `<section class="ad-card"><h2 class="ad-card-title">Roadblocks</h2>
-      <p class="ad-card-sub">What's getting in the way, from each coach's most recent check (${m.roadN} coach${m.roadN === 1 ? "" : "es"}).</p>
-      ${m.roadN ? `<div class="ad-hbars">${rows}</div>` : `<p class="ad-empty">Shows after the first Week 2 check.</p>`}</section>`;
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Roadblocks</h2>
+      <p class="dsh-card-sub">What's getting in the way, at ${esc(checkName())} (${m.roadN} coach${m.roadN === 1 ? "" : "es"}).</p>
+      ${m.roadN ? `<div class="dsh-hbars">${rows}</div>` : `<p class="dsh-empty">Shows after the first Week 2 check.</p>`}</section>`;
   }
 
   // Average answer per question, per week: heatmap table (darker = more Yes).
@@ -381,56 +456,56 @@
       return `<td style="background:rgb(${c},${c},${Math.round(234 - t * (234 - 17))});color:${ink}" tabindex="0"
         data-tip="<b>${esc(D.QUESTIONS[i].short)}</b> · ${w.cp.label}<br>Average ${v.toFixed(1)} of 2 (${w.n} coach${w.n === 1 ? "" : "es"})">${v.toFixed(1)}</td>`;
     };
-    const rows = D.QUESTIONS.map((Q, i) => `<tr><th scope="row"><span class="ad-q-num">0${i + 1}</span>${esc(Q.short)}${i === lowest ? `<span class="ad-tag">LOWEST</span>` : ""}</th>
+    const rows = D.QUESTIONS.map((Q, i) => `<tr><th scope="row"><span class="dsh-q-num">0${i + 1}</span>${esc(Q.short)}${i === lowest ? `<span class="dsh-tag">LOWEST</span>` : ""}</th>
       ${m.weeks.map(w => cell(w.qAvg[i], w, i)).join("")}</tr>`).join("");
-    return `<section class="ad-card"><h2 class="ad-card-title">The five questions</h2>
-      <p class="ad-card-sub">Average answer per question (0 = No, 1 = Partly, 2 = Yes). "Lowest" = the weakest question at the latest check.</p>
-      <table class="ad-heat"><thead><tr><th scope="col">Question</th>${m.weeks.map(w => `<th scope="col">${esc(w.cp.label)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
-      <div class="ad-scale"><span>No</span><i aria-hidden="true"></i><span>Yes</span></div></section>`;
+    return `<section class="dsh-card"><h2 class="dsh-card-title">The five questions</h2>
+      <p class="dsh-card-sub">Average answer per question (0 = No, 1 = Partly, 2 = Yes). "Lowest" = the weakest question at the latest check.</p>
+      <table class="dsh-heat"><thead><tr><th scope="col">Question</th>${m.weeks.map(w => `<th scope="col">${esc(w.cp.label)}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table>
+      <div class="dsh-scale"><span>No</span><i aria-hidden="true"></i><span>Yes</span></div></section>`;
   }
 
   // What coaches decided about their action at each check.
   function cardChoices(m) {
     const used = CHOICES.filter(([k]) => m.weeks.some(w => w.choices[k]));
-    const body = used.length ? `<div class="ad-table-wrap"><table class="ad-table"><thead><tr><th>CHOICE</th>${m.weeks.map(w => `<th class="num">${esc(w.cp.label.toUpperCase())}</th>`).join("")}</tr></thead>
-      <tbody>${used.map(([k, l]) => `<tr><td>${esc(l)}</td>${m.weeks.map(w => `<td class="num">${w.choices[k] || `<span class="ad-dash">–</span>`}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-      ${(() => { const s = m.weeks.reduce((t, w) => t + w.sameWords, 0); return s ? `<p class="ad-note">${s} time${s === 1 ? "" : "s"} a coach chose to change their action but kept the same words.</p>` : ""; })()}`
-      : `<p class="ad-empty">Shows after the first check.</p>`;
-    return `<section class="ad-card"><h2 class="ad-card-title">Action choices</h2>
-      <p class="ad-card-sub">What coaches did with their action at each check.</p>${body}</section>`;
+    const body = used.length ? `<div class="dsh-table-wrap"><table class="dsh-table"><thead><tr><th>CHOICE</th>${m.weeks.map(w => `<th class="num">${esc(w.cp.label.toUpperCase())}</th>`).join("")}</tr></thead>
+      <tbody>${used.map(([k, l]) => `<tr><td>${esc(l)}</td>${m.weeks.map(w => `<td class="num">${w.choices[k] || `<span class="dsh-dash">–</span>`}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
+      ${(() => { const s = m.weeks.reduce((t, w) => t + w.sameWords, 0); return s ? `<p class="dsh-note">${s} time${s === 1 ? "" : "s"} a coach chose to change their action but kept the same words.</p>` : ""; })()}`
+      : `<p class="dsh-empty">Shows after the first check.</p>`;
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Action choices</h2>
+      <p class="dsh-card-sub">What coaches did with their action at each check.</p>${body}</section>`;
   }
 
   // Every coach: where they are, each week's letter, and their current action. Click a row for details.
   function cardCoaches(m) {
     const weekCell = (c, cp) => {
       const r = c.done[cp.key];
-      if (r) return `<span class="ad-letter is-${r.abc}" tabindex="0" data-tip="<b>${cp.label} · ${r.abc}</b> ${esc(ABC_NAME(r.abc))}<br>Score ${r.score}/10 · ${fmtDate(r.checked_at)}">${r.abc}</span><span class="ad-score">${r.score}</span>`;
+      if (r) return `<span class="dsh-letter is-${r.abc}" tabindex="0" data-tip="<b>${cp.label} · ${r.abc}</b> ${esc(ABC_NAME(r.abc))}<br>Score ${r.score}/10 · ${fmtDate(r.checked_at)}">${r.abc}</span><span class="dsh-score">${r.score}</span>`;
       if (c.next.cp === cp) {
-        if (c.next.kind === "overdue") return `<span class="ad-state ad-flag">${ICON.alert}${esc(c.next.label)}</span>`;
-        return `<span class="ad-state${c.next.kind === "ready" ? " is-ready" : ""}">${esc(c.next.label)}</span>`;
+        if (c.next.kind === "overdue") return `<span class="dsh-state dsh-flag">${ICON.alert}${esc(c.next.label)}</span>`;
+        return `<span class="dsh-state${c.next.kind === "ready" ? " is-ready" : ""}">${esc(c.next.label)}</span>`;
       }
-      return `<span class="ad-dash">–</span>`;
+      return `<span class="dsh-dash">–</span>`;
     };
     const rows = m.list.map(c => {
       const P = c.p, open = ui.open === P.id;
-      const act = P.current_action_when ? `When <b>${esc(P.current_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.current_action_will.replace(/\.$/, ""))}</b>.` : `<span class="ad-dash">No action yet</span>`;
-      const main = `<tr class="ad-coach-row${ui.newRows.has(P.id) ? " is-new" : ""}" data-act="toggle" data-v="${P.id}" aria-expanded="${open}" tabindex="0">
-        <td><span class="ad-name">${esc(P.first_name)} ${esc(P.last_name)}</span><span class="ad-email">${esc(P.email)}</span></td>
-        <td class="ad-org">${esc(orgName(P.org))}</td>
+      const act = P.current_action_when ? `When <b>${esc(P.current_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.current_action_will.replace(/\.$/, ""))}</b>.` : `<span class="dsh-dash">No action yet</span>`;
+      const main = `<tr class="dsh-coach-row${ui.newRows.has(P.id) ? " is-new" : ""}" data-act="toggle" data-v="${P.id}" aria-expanded="${open}" tabindex="0">
+        <td><span class="dsh-name">${esc(P.first_name)} ${esc(P.last_name)}</span><span class="dsh-email">${esc(P.email)}</span></td>
+        <td class="dsh-org">${esc(orgName(P.org))}</td>
         ${CPS.map(cp => `<td>${weekCell(c, cp)}</td>`).join("")}
-        <td class="ad-action">${act}</td>
-        <td><span class="ad-chev">${ICON.down}</span></td></tr>`;
-      return open ? main + `<tr class="ad-detail"><td colspan="${4 + CPS.length}">${detail(c)}</td></tr>` : main;
+        <td class="dsh-action">${act}</td>
+        <td><span class="dsh-chev">${ICON.down}</span></td></tr>`;
+      return open ? main + `<tr class="dsh-detail"><td colspan="${4 + CPS.length}">${detail(c)}</td></tr>` : main;
     }).join("");
-    return `<section class="ad-card ad-card--wide"><h2 class="ad-card-title">Coaches</h2>
-      <p class="ad-card-sub">Every coach, their letter at each check (number = score out of 10) and their current action. Click a coach for their answers.</p>
-      <div class="ad-filters" style="margin-top:16px;padding-top:0;border-top:0">
+    return `<section class="dsh-card dsh-card--wide"><h2 class="dsh-card-title">Coaches</h2>
+      <p class="dsh-card-sub">Every coach, their letter at each check (number = score out of 10) and their current action. Click a coach for their answers.</p>
+      <div class="dsh-filters" style="margin-top:16px;padding-top:0;border-top:0">
         <label class="cc-field"><span class="cc-field-label">SEARCH</span><input class="cc-input" id="f-search" type="search" placeholder="Name or email" value="${esc(ui.search)}"></label>
         <label class="cc-field"><span class="cc-field-label">SORT BY</span><span class="cc-select"><select class="cc-input" id="f-sort">
           ${[["attention", "Needs attention first"], ["recent", "Latest activity"], ["name", "Name"]].map(([v, l]) => `<option value="${v}"${ui.sort === v ? " selected" : ""}>${l}</option>`).join("")}
         </select>${ICON.down}</span></label></div>
-      ${m.list.length ? `<div class="ad-table-wrap"><table class="ad-table ad-coaches"><thead><tr><th>COACH</th><th>ORGANIZATION</th>${CPS.map(cp => `<th>${esc(cp.label.toUpperCase())}</th>`).join("")}<th>CURRENT ACTION</th><th><span class="cc-sr" style="position:absolute;left:-9999px">Details</span></th></tr></thead>
-        <tbody>${rows}</tbody></table></div>` : `<p class="ad-empty">No coach matches “${esc(ui.search)}”.</p>`}
+      ${m.list.length ? `<div class="dsh-table-wrap"><table class="dsh-table dsh-coaches"><thead><tr><th>COACH</th><th>ORGANIZATION</th>${CPS.map(cp => `<th>${esc(cp.label.toUpperCase())}</th>`).join("")}<th>CURRENT ACTION</th><th><span class="cc-sr" style="position:absolute;left:-9999px">Details</span></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>` : `<p class="dsh-empty">No coach matches “${esc(ui.search)}”.</p>`}
     </section>`;
   }
   function detail(c) {
@@ -438,17 +513,17 @@
     const first = P.first_action_when ? `<p>First action (${P.first_action_date ? fmtDate(P.first_action_date) : ""}): When <b>${esc(P.first_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.first_action_will.replace(/\.$/, ""))}</b>.</p>` : "";
     const boxes = CPS.map(cp => {
       const r = c.done[cp.key];
-      if (!r) return `<div class="ad-det ad-det-empty">${esc(cp.label)}: not done</div>`;
+      if (!r) return `<div class="dsh-det dsh-det-empty">${esc(cp.label)}: not done</div>`;
       const ans = [r.q1, r.q2, r.q3, r.q4, r.q5];
       const dots = p => `<span class="cc-dots" role="img" aria-label="${["No", "Partly", "Yes"][p]}"><i${p > 0 ? ' class="on"' : ""}></i><i${p > 1 ? ' class="on"' : ""}></i></span>`;
       const choice = (CHOICES.find(([k]) => k === r.action_choice) || [0, ""])[1];
-      return `<div class="ad-det"><div class="ad-det-head"><span class="ad-letter is-${r.abc}">${r.abc}</span><b>${esc(cp.label)}</b><span>${r.score}/10 · ${fmtDate(r.checked_at)}</span></div>
+      return `<div class="dsh-det"><div class="dsh-det-head"><span class="dsh-letter is-${r.abc}">${r.abc}</span><b>${esc(cp.label)}</b><span>${r.score}/10 · ${fmtDate(r.checked_at)}</span></div>
         <ol class="cc-rows">${ans.map((p, i) => `<li class="cc-r"><span class="cc-num">0${i + 1}</span><span class="t">${esc(D.QUESTIONS[i].short)}</span>${dots(p)}</li>`).join("")}</ol>
         <p>Roadblock: <b>${esc(r.roadblock ? D.ROADBLOCKS[r.roadblock].name : "None showing")}</b></p>
         ${r.action_when ? `<p>${esc(choice)}${r.action_changed === false && r.action_choice !== "keep" ? " (same words)" : ""}: When <b>${esc(r.action_when.replace(/,$/, ""))}</b>, I will <b>${esc(r.action_will.replace(/\.$/, ""))}</b>.</p>` : ""}</div>`;
     }).join("");
-    return `${first}<div class="ad-detail-grid" style="margin-top:10px">${boxes}</div>
-      <p class="ad-note">Signed up ${fmtDate(P.created_at)}${P.start_date ? ` · programme clock started ${fmtDate(P.start_date)}` : ""} · ${esc(P.gender)} · ${esc(P.age_bracket)}</p>`;
+    return `${first}<div class="dsh-detail-grid" style="margin-top:10px">${boxes}</div>
+      <p class="dsh-note">Signed up ${fmtDate(P.created_at)}${P.start_date ? ` · programme clock started ${fmtDate(P.start_date)}` : ""} · ${esc(P.gender)} · ${esc(P.age_bracket)}</p>`;
   }
 
   /* ---------- Render ---------- */
@@ -474,8 +549,8 @@
     if (u) u.textContent = ui.updated ? `Updated ${fmtTime(ui.updated)}` : "";
   }
   function showToast(text) {
-    const old = document.querySelector(".ad-toast"); if (old) old.remove();
-    const t = document.createElement("div"); t.className = "ad-toast"; t.setAttribute("role", "status");
+    const old = document.querySelector(".dsh-toast"); if (old) old.remove();
+    const t = document.createElement("div"); t.className = "dsh-toast"; t.setAttribute("role", "status");
     t.innerHTML = `<i></i><span>${esc(text)}</span>`; document.body.appendChild(t);
     setTimeout(() => t.remove(), 5000);
   }
@@ -510,6 +585,8 @@
   function bindShell() {
     const org = document.getElementById("f-org");
     org.addEventListener("change", () => { ui.org = org.value; ui.open = null; render(); });
+    const chk = document.getElementById("f-check");
+    chk.addEventListener("change", () => { ui.check = chk.value; render(); });
   }
   function bindContent() {
     const s = document.getElementById("f-search"), so = document.getElementById("f-sort");

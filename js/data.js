@@ -31,19 +31,22 @@ window.CC_DATA = {
         "I ask sometimes, but when rushed I often give my view first.",
         "I usually give feedback before checking what the player noticed."
       ] },
+    /* defs = short definitions shown on the question screen (between "See an example" and YES/PARTLY/NO)
+       and at the top of its "See an example" pop-up. */
     { stage: "See it", short: "Don't know it or don't own it",
-      text: "Before I intervene, do I check whether the player doesn't know it, so I teach, or doesn't own it, so I coach?",
+      text: "When a player needs help, do I decide whether to teach or coach before I step in?",
+      defs: [["TEACH", "They don't know it yet."], ["COACH", "They know it, but don't own it."]],
       opts: [
-        "I check whether the player doesn't know it or doesn't own it before intervening.",
-        "I make the distinction with some players, but sometimes go straight to a fix.",
-        "I generally intervene without first checking which it is."
+        "I decide whether to teach or coach before I step in.",
+        "I decide with some players, but often go straight to a fix.",
+        "I usually step in without deciding which it is."
       ] },
     { stage: "Own it", short: "Resist the quick answer",
-      text: "When I feel the urge to give the answer because it's quicker, do I pause and give the player an opportunity to think?",
+      text: "When a player could work it out, do I still give them the chance, even when I'm rushed or frustrated?",
       opts: [
-        "I notice the urge and give the player room to think when appropriate.",
-        "I pause sometimes, but under pressure I still give answers quickly.",
-        "I usually give the answer rather than letting the player work it out."
+        "When a player could work it out, I give them the chance, even under pressure.",
+        "I give them the chance when things are calm, but step in when I'm rushed or frustrated.",
+        "I usually give the answer, even when the player could work it out."
       ] },
     { stage: "Change it", short: "What I committed to",
       text: "Have I followed through on my chosen action when the opportunity came up?",

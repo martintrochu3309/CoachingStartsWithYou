@@ -312,6 +312,9 @@
     </section>`;
   }
 
+  // Short definitions under a question (e.g. TEACH / COACH on question 02).
+  const defs = Q => (Q.defs ? `<div class="cc-defs">${Q.defs.map(([k, t]) => `<p><b>${esc(k)}</b>${esc(t)}</p>`).join("")}</div>` : "");
+
   function vQuestion() {
     const n = ui.q, Q = D.QUESTIONS[n], sel = ui.answers[n];
     const ref = (n === 3 && store.action) ? `<div class="dx-card"><p class="dx-card-label">YOUR ACTION</p>${promise(store.action)}</div>` : "";
@@ -322,6 +325,7 @@
       <h1 class="dx-title" style="margin-top:26px">0${n + 1}: ${esc(Q.short.toUpperCase())}</h1>
       <p class="cc-q">${esc(Q.text)}</p>
       <button class="cc-ex-link" data-act="qExample" aria-haspopup="dialog">See an example</button>
+      ${defs(Q)}
       ${ref}
       <div class="dx-pills dx-pills--stack cc-pills" style="margin-top:22px">${pills}</div>
       <div class="dx-spacer"></div>
@@ -612,6 +616,7 @@
       return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet" role="dialog" aria-modal="true" aria-label="Example: ${esc(Q.short)}">
         <button class="cc-x" data-act="closePopup" aria-label="Close">${ICON.x}</button>
         <h2 class="dx-title cc-qex-title">0${ui.q + 1}: ${esc(Q.short.toUpperCase())}</h2>
+        ${defs(Q)}
         ${[2, 1, 0].map(p => `<div class="cc-qex-row"><p class="cc-road-label">${WORDS[p]}</p><p class="dx-text">${esc(Q.opts[2 - p])}</p></div>`).join("")}
       </div>`;
     }
