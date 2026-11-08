@@ -34,6 +34,9 @@
   // The coach's organization: saved on their account once signed up, otherwise the one in the link.
   const orgCode = () => (store.account && store.account.org) || LINK_ORG;
   const startsAtWeek2 = () => { const o = D.ORGANIZATIONS[orgCode()]; return !!(o && o.startAtWeek2); };
+  // Has this coach started the programme (an action committed or any check done)? Then the first-action
+  // (workshop) screen never shows again.
+  const started = () => !!(store.action || store.records.length);
 
   /* ---------- Supabase: login with a 6-digit email code, and saving ----------
      Project "Coaching Starts With You". The publishable key is meant to be public: what each coach can
@@ -188,7 +191,7 @@
     // Signed in but no action yet (closed the app after the code): straight back to writing it
     // (organization that starts at Week 2: back to the first page, where BEGIN opens the Week 2 check).
     view: new URLSearchParams(location.search).has("start") || !store.signedIn ? "landing"
-      : store.action ? "home" : startsAtWeek2() ? "landing" : "action",
+      : started() ? "home" : startsAtWeek2() ? "landing" : "action",
     q: 0, answers: [null, null, null, null, null], actExOpen: false,
     when: "", will: "", result: null,
     // Sign up / sign in
@@ -734,7 +737,7 @@
     if (!store.signedIn) { ui.authErr = ""; return go("auth"); }
     // Signed up but no action yet: workshop day, write it. Otherwise a check: the mirror, then question 01.
     // Organization that starts at Week 2: no workshop-day screen, straight into the Week 2 check.
-    go(store.action || startsAtWeek2() ? "mirror" : "action");
+    go(started() || startsAtWeek2() ? "mirror" : "action");
   }
   /* Code checked: load this person's account, action and checks from Supabase, or create the account (first sign-up).
      Workshop day (no action yet) → write the first action. Already has one → SEE IT. */
@@ -762,7 +765,7 @@
     ui.code = ""; ui.authErr = "";
     // The "check is ready" pop-up shows on SEE IT if one is due.
     ui.result = null; ui.actMode = null; ui.actChoice = null;
-    if (store.action) return go("home");
+    if (started()) return go("home");
     // Organization that starts at Week 2: straight into the Week 2 check (mirror, then question 01).
     if (startsAtWeek2()) { ui.q = 0; ui.answers = [null, null, null, null, null]; return go("mirror"); }
     go("action");
@@ -789,7 +792,11 @@
     const a = { when: ui.when.trim().replace(/,?$/, ","), will: ui.will.trim().replace(/\.?$/, ".") };
     if (!ui.result) {
       const date = new Date(now()).toISOString();
-      store.action = { ...a, date }; store.firstAction = { ...a, date }; store.startDate = date;
+      // The programme clock starts here only once: a clock that's already running (a check done, or an
+      // earlier first action) is never restarted, so Week 4/6 can't jump forward.
+      store.action = { ...a, date };
+      if (!store.firstAction) store.firstAction = { ...a, date };
+      if (!store.startDate) store.startDate = date;
       store.dirty = true; save(); pushAll();
       ui.tab = "see"; ui.chip = null; ui.readyShown = true;
       return go("home");
@@ -847,7 +854,7 @@
     },
     back() {
       if (ui.view === "q") { if (ui.q > 0) { ui.q--; return go("q"); } return go("mirror"); }
-      go(store.action ? "home" : "landing");
+      go(started() ? "home" : "landing");
     },
     actExample() { ui.actExOpen = !ui.actExOpen; render(); },
     qExample() { ui.popup = "qex"; render(); },

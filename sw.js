@@ -1,5 +1,5 @@
 /* Offline cache. Bump VERSION every time you upload a new build. */
-const VERSION = "cc-v35";
+const VERSION = "cc-v36";
 const FILES = [
   "./", "index.html", "manifest.json",
   "dx/dailyxcellence.css", "css/change-check.css",
