@@ -74,6 +74,12 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 .cc-input--locked { justify-content: space-between; gap: 12px; color: var(--dx-ink); }
 .cc-input--locked .cc-lock { flex: none; color: var(--dx-soft); }
 .cc-privacy { margin: 24px 0 0; font-size: 13px; line-height: 1.5; font-weight: 300; color: var(--dx-muted); }
+/* "By signing up, you agree to our Terms & Privacy Policy." grey italic, centred, just above SEND MY CODE */
+.cc-terms { margin: 0 0 12px; text-align: center; font-size: 12px; line-height: 1.45; font-style: italic; font-weight: 300; color: var(--dx-soft); }
+.cc-terms a { white-space: nowrap; color: var(--dx-muted); text-decoration: underline; text-decoration-color: var(--dx-outline); text-underline-offset: 3px; }
+/* Privacy · Terms links at the foot of the Coaching guide */
+.cc-legal { margin: 26px 0 0; text-align: center; font-size: 13px; font-weight: 300; color: var(--dx-soft); }
+.cc-legal a { color: var(--dx-muted); text-decoration: underline; text-underline-offset: 2px; }
 .cc-auth-err { margin-top: 16px; }
 .cc-auth-email { font-weight: 500; color: var(--dx-ink); word-break: break-all; }
 /* Six code boxes; one invisible input sits over them so typing, pasting and iPhone code autofill all work */
@@ -268,6 +274,71 @@ button.cc-lock { padding: 12px; margin: -12px; }
 
 /* Tab bar: kit styles links; these let buttons work the same */
 .dx-tabs a { cursor: pointer; font-weight: 700; letter-spacing: .14em; }
+/* Bottom navigation: the SEE IT / OWN IT / CHANGE IT bar, plus the round Coaching guide button beside it.
+   The wrapper takes over the kit's fixed position so the two sit side by side. */
+.cc-nav { position: fixed; z-index: 20; left: 16px; right: 16px; bottom: max(24px, calc(env(safe-area-inset-bottom) + 8px));
+  max-width: calc(var(--dx-column) - 32px); margin: 0 auto; display: flex; gap: 8px; }
+.cc-nav .dx-tabs { position: static; flex: 1; min-width: 0; max-width: none; margin: 0; }
+.cc-guide-btn { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 64px; height: 64px;
+  border-radius: 32px; border: 1px solid rgba(0,0,0,.06); text-decoration: none; color: var(--dx-muted);
+  background: rgba(255,255,255,.78); -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: 0 10px 30px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.9); }
+.cc-guide-btn span { font: 700 8px/1 var(--dx-font-body); letter-spacing: .14em; text-indent: .14em; }
+.cc-guide-btn.is-on { background: var(--dx-ink); border-color: var(--dx-ink); color: #fff; }
+.cc-nav .dx-tabs a { white-space: nowrap; }
+/* Small phones (iPhone SE): tighter tab labels so CHANGE IT stays on one line beside the GUIDE button */
+@media (max-width: 360px) { .cc-nav .dx-tabs a { font-size: 9px; letter-spacing: .08em; } }
+
+/* Coaching guide */
+.cc-guide-sub { margin-top: 10px; }
+/* Numbered list: 01 SEE IT · 02 OWN IT · 03 CHANGE IT, thin line between rows. Number ringed when closed, filled when open. */
+.cc-guide-rows { margin-top: 26px; border-bottom: 1px solid var(--dx-rule); }
+.cc-guide-row { border-top: 1px solid var(--dx-rule); }
+.dx .cc-guide-head { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px 0; text-align: left; }
+.cc-guide-num { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--dx-ink);
+  background: var(--dx-bg); font: italic 700 15px/1 var(--dx-font-display); color: var(--dx-ink); transition: background .2s ease, color .2s ease; }
+.cc-guide-row.is-open .cc-guide-num { background: var(--dx-ink); color: #fff; }
+.cc-guide-titles { flex: 1; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.cc-guide-name { font: italic 700 22px/1.1 var(--dx-font-display); letter-spacing: -.02em; color: var(--dx-ink); }
+.cc-guide-tag { font: 700 10px/1 var(--dx-font-body); letter-spacing: .2em; color: var(--dx-muted); }
+.cc-guide-chev { flex: none; display: flex; color: var(--dx-ink); transition: transform .2s ease; }
+.cc-guide-row.is-open .cc-guide-chev { transform: rotate(180deg); }
+/* Opened: the text lines up with the title (past the number) */
+.cc-guide-body { padding: 0 0 24px 54px; }
+.cc-guide-lead { margin: 0 0 12px; font: italic 700 17px/1.3 var(--dx-font-display); letter-spacing: -.01em; color: var(--dx-ink); }
+.cc-guide-p { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 300; color: var(--dx-ink); }
+.cc-guide-p + .cc-guide-p { margin-top: 10px; }
+/* The one-line truth of each section, in the display face */
+.cc-guide-line { margin: 16px 0 0; font: italic 700 18px/1.25 var(--dx-font-display); letter-spacing: -.01em; color: var(--dx-ink); }
+.cc-guide-label { margin: 22px 0 0; font: 700 10px/1.4 var(--dx-font-body); letter-spacing: .2em; color: var(--dx-muted); }
+.cc-guide-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cc-guide-list li { position: relative; padding-left: 18px; font-size: 16px; line-height: 1.5; font-weight: 300; color: var(--dx-muted); }
+.cc-guide-list li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 6px; height: 6px; border-radius: 50%; background: var(--dx-ink); }
+.cc-guide-list b { font-weight: 700; color: var(--dx-ink); }
+/* Continue your development: Pocket Mirror */
+.cc-guide-more-label { margin-top: 34px; }
+/* Pocket Mirror: a black tile in its own look. The picture fills the right side and fades into the black;
+   words on the left. The whole tile is the link (opens in a new tab). */
+.cc-pm { position: relative; display: block; margin-top: 12px; height: 260px; overflow: hidden; border-radius: var(--dx-radius-card);
+  background: #0b0b0b; color: #fff; text-decoration: none; -webkit-tap-highlight-color: transparent; transition: transform .15s ease; }
+.cc-pm-img { position: absolute; top: 0; right: 0; height: 100%; width: auto; max-width: 62%; object-fit: cover; object-position: center top;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 28%); mask-image: linear-gradient(90deg, transparent 0, #000 28%); }
+/* Text column stays left of the picture (the picture starts at about 47% of the tile) */
+.cc-pm-text { position: relative; z-index: 1; display: flex; flex-direction: column; height: 100%; width: 42%; padding: 22px 0 20px 20px; }
+/* POCKET MIRROR and FREE side by side, on one line (may run over the faded edge of the picture) */
+.cc-pm-head { display: flex; align-items: center; gap: 8px; width: max-content; white-space: nowrap; }
+.cc-pm-name { font: 700 10px/1 var(--dx-font-body); letter-spacing: .18em; color: #bdbdb8; }
+.cc-free { padding: 5px 7px; border-radius: 6px; background: #fff; color: #0b0b0b; font: 700 9px/1 var(--dx-font-body); letter-spacing: .18em; }
+.cc-pm-hook { margin: 16px 0 0; font: italic 700 min(23px, 5.6vw)/1.05 var(--dx-font-display); letter-spacing: -.03em; color: #fff; }
+/* Two short grey lines under the hook; a little wider than the headline column (runs into the picture's faded edge) */
+.cc-pm-line { width: 125%; margin: 10px 0 0; font-size: min(14px, 3.6vw); line-height: 1.4; font-weight: 300; color: #c9c9c5; white-space: nowrap; }
+/* Small round arrow, like the app's own buttons: shows the tile can be tapped */
+.cc-pm-go { margin-top: auto; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #fff; color: #0b0b0b; }
+.cc-pm-go svg { width: 18px; height: 18px; }
+/* Small phones: a slightly smaller picture, anchored to the bottom, so the words keep clear of it */
+@media (max-width: 360px) { .cc-pm-img { top: auto; bottom: 0; height: 86%; } }
+.cc-pm:active { transform: scale(.985); }
+.cc-pm:focus-visible { outline: 2px solid var(--dx-ink); outline-offset: 3px; }
 
 /* Pop-up sheets */
 .cc-dim { position: fixed; inset: 0; z-index: 30; background: rgba(17,17,17,.42); animation: cc-fade .2s ease; }

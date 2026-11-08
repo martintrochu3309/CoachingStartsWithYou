@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- PREVIEW of the admin dashboard for building on your own computer: pretend login (any email, any 6 digits),
+       12 sample coaches, plus anything you do in ../preview.html. Does nothing on the live website. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Preview · Dashboard</title>
+  <link rel="icon" href="../assets/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="../dx/dailyxcellence.css">
+  <link rel="stylesheet" href="../css/change-check.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .pv-badge { position: fixed; z-index: 60; right: 10px; bottom: 10px; padding: 6px 10px; border-radius: 12px;
+      background: #111; color: #fff; font: 700 9px/1 Arial, sans-serif; letter-spacing: .16em; opacity: .85; }
+  </style>
+</head>
+<body class="dx">
+  <main id="dash" aria-live="polite"></main>
+  <div class="dsh-tip" id="tip" role="tooltip" hidden></div>
+  <script src="../dev/fake-supabase.js"></script>
+  <script>
+    // 12 made-up coaches at different points of the programme (same every time).
+    function sampleRows(table) {
+      const DAY = 86400000, now = Date.now(), profiles = [], checks = [];
+      const names = [["Sam","Reed"],["Alex","Moreno"],["Jordan","Lee"],["Taylor","Brooks"],["Casey","Nguyen"],["Riley","Patel"],
+                     ["Morgan","Hayes"],["Jamie","Ortiz"],["Drew","Kim"],["Avery","Shaw"],["Quinn","Diaz"],["Parker","Cole"]];
+      const roads = ["unawareness", "habit", "skill", null];
+      let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+      names.forEach(([f, l], i) => {
+        const id = "sample-" + i, org = i < 8 ? "golf-department" : null;
+        const start = now - (i < 4 ? 45 : i < 9 ? 31 : 16) * DAY;
+        profiles.push({ id, email: f.toLowerCase() + "@example.com", first_name: f, last_name: l, gender: i % 3 ? "man" : "woman", age_bracket: "35–44",
+          org, org_name: org ? "Golf Department" : null, created_at: new Date(start - DAY).toISOString(), start_date: new Date(start).toISOString(),
+          first_action_when: "a player misses a putt,", first_action_will: "ask what they noticed before I give feedback.", first_action_date: new Date(start).toISOString(),
+          current_action_when: "a player misses a putt,", current_action_will: "ask what they noticed before I give feedback.", current_action_date: new Date(start).toISOString() });
+        const nDone = i < 3 ? 3 : i < 7 ? 2 : i < 10 ? 1 : 0;
+        ["week2", "week4", "week6"].slice(0, nDone).forEach((cp, k) => {
+          const qs = [0, 1, 2, 3, 4].map(() => Math.min(2, Math.floor(rnd() * 2.2 + k * 0.5)));
+          const abc = qs[3] === 2 ? "A" : qs[3] === 1 ? "B" : "C";
+          checks.push({ id: id + cp, user_id: id, checkpoint: cp, checked_at: new Date(start + (14 * (k + 1) + 1) * DAY).toISOString(),
+            q1: qs[0], q2: qs[1], q3: qs[2], q4: qs[3], q5: qs[4], score: qs.reduce((a, b) => a + b, 0), max_score: 10,
+            status: abc === "A" ? "owning" : abc === "B" ? "renting" : "notstarted", abc, roadblock: roads[Math.floor(rnd() * 4)],
+            action_when: "a player misses a putt,", action_will: "ask what they noticed before I give feedback.",
+            action_choice: k === 0 ? "first" : ["keep", "easier", "smaller", "new"][Math.floor(rnd() * 4)], action_changed: rnd() > .3 });
+        });
+      });
+      // A reminder email for every check, sent at 9 AM the day it opened (each sample check was done a day later).
+      const reminders = checks.map(c => ({ user_id: c.user_id, checkpoint: c.checkpoint, sent_at: new Date(new Date(c.checked_at).getTime() - DAY).toISOString() }));
+      return table === "profiles" ? profiles : table === "checks" ? checks : table === "reminders" ? reminders : [];
+    }
+    if (!window.CC_PREVIEW_LOCAL) {
+      document.getElementById("dash").innerHTML = '<p class="dx-intro" style="padding:40px 24px">Preview only works on your own computer.</p>';
+    } else {
+      window.supabase = window.CC_FAKE_SUPABASE({ extra: sampleRows, anyEmail: true });
+      const b = document.createElement("span"); b.className = "pv-badge"; b.textContent = "PREVIEW · SAMPLE DATA"; document.body.appendChild(b);
+      ["../js/data.js", "admin.js"].reduce((p, src) => p.then(() => new Promise(r => {
+        const s = document.createElement("script"); s.src = src; s.onload = r; document.body.appendChild(s);
+      })), Promise.resolve());
+    }
+  </script>
+</body>
+</html>

@@ -194,7 +194,8 @@
     // Sign up / sign in
     authMode: "signup", su: { first: "", last: "", email: "", gender: null, age: null }, siEmail: "",
     code: "", authErr: "", authBusy: false, resentAt: 0,
-    tab: "see", chip: null, popup: null, gateway: false, readyShown: false
+    tab: "see", chip: null, popup: null, gateway: false, readyShown: false,
+    guideOpen: {}                    // Coaching guide: which sections are open (all closed to start)
   };
 
   /* ---------- Helpers ---------- */
@@ -238,11 +239,14 @@
     const i = store.records.length;
     if (!store.startDate || i >= D.CHECKPOINTS.length) return null;
     const start = new Date(store.startDate).getTime();
-    const due = start + D.CHECKPOINTS[i].day * DAY;
     const prevDay = i ? D.CHECKPOINTS[i - 1].day : 0;
-    const span = (D.CHECKPOINTS[i].day - prevDay) * DAY;
+    // Normally day 14 / 28 / 42 from the start. If the previous check was done late, at least MIN_GAP_DAYS after it.
+    const planned = start + D.CHECKPOINTS[i].day * DAY;
+    const prevDone = i && store.records[i - 1] ? new Date(store.records[i - 1].date).getTime() : 0;
+    const due = Math.max(planned, prevDone ? prevDone + (D.MIN_GAP_DAYS || 0) * DAY : 0);
+    const from = due > planned ? prevDone : start + prevDay * DAY;      // where the countdown ring starts
     const left = Math.max(0, Math.ceil((due - now()) / DAY));
-    const elapsed = Math.min(1, Math.max(0, (now() - (start + prevDay * DAY)) / span));
+    const elapsed = Math.min(1, Math.max(0, (now() - from) / Math.max(DAY, due - from)));
     return { cp: D.CHECKPOINTS[i], due: now() >= due, left, elapsed };
   }
   const complete = () => store.records.length >= D.CHECKPOINTS.length;
@@ -255,7 +259,8 @@
     down: svg('<path d="M6 9l6 6 6-6"/>'),
     x: svg('<path d="M6 6l12 12M18 6L6 18"/>', 2.2),
     plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4, 18),
-    lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 2.4, 16)
+    lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 2.4, 16),
+    book: svg('<path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/>', 1.8, 20)
   };
   // Two dots per answer: No = both grey, Partly = one black, Yes = both black.
   const dots = p => `<span class="cc-dots" role="img" aria-label="${ANSWER[p]}"><i${p > 0 ? ' class="on"' : ""}></i><i${p > 1 ? ' class="on"' : ""}></i></span>`;
@@ -279,10 +284,12 @@
     ).join("") + "</div>";
   }
   const promise = a => `<p class="dx-promise">When <b class="dx-own">${esc(a ? a.when.replace(/,$/, "") : "")}</b>, I will <b class="dx-own">${esc(a ? a.will.replace(/\.$/, "") : "")}</b>.</p>`;
+  // The method's three tabs stay one bar; the Coaching guide is a separate round button beside it.
   function tabs() {
     const t = [["see", "SEE IT"], ["own", "OWN IT"], ["change", "CHANGE IT"]];
-    return `<nav class="dx-tabs" aria-label="Sections">${t.map(([k, n]) =>
-      `<a href="#${k}" data-act="tab" data-v="${k}"${ui.tab === k ? ' aria-current="page"' : ""}>${n}</a>`).join("")}</nav>`;
+    return `<div class="cc-nav"><nav class="dx-tabs" aria-label="Sections">${t.map(([k, n]) =>
+      `<a href="#${k}" data-act="tab" data-v="${k}"${ui.tab === k ? ' aria-current="page"' : ""}>${n}</a>`).join("")}</nav>
+      <a href="#guide" class="cc-guide-btn${ui.tab === "guide" ? " is-on" : ""}" data-act="tab" data-v="guide" aria-label="Coaching guide"${ui.tab === "guide" ? ' aria-current="page"' : ""}>${ICON.book}<span>GUIDE</span></a></div>`;
   }
   const bar = filled => `<div class="dx-bar" aria-hidden="true">${[0, 1, 2, 3, 4].map(k => `<span class="dx-bar-part">${k < filled ? '<i style="width:100%"></i>' : ""}</span>`).join("")}</div>`;
 
@@ -304,13 +311,23 @@
       <h1 class="dx-title">THE MIRROR IS FOR YOU.</h1>
       <p class="dx-intro cc-mirror-sub">A moment to reflect.</p>
       <p class="cc-q">Look honestly at how you coach. Recognise what you're doing well, where you're struggling, and what you might do differently.</p>
-      <p class="cc-q">Your answers are for you. Only the programme team can see them. The aim is better coaching.</p>
+      <p class="cc-q">Your answers are for you. ${esc(whoSees(orgCode()))} The aim is better coaching.</p>
       <p class="cc-q">Be honest when you've made progress. Be equally honest when you haven't. Your answer shows where you are right now, not who you are.</p>
       <p class="cc-q">That's how you become the coach you know you can be.</p>
       <div class="dx-spacer"></div>
       <div class="cc-foot"><button class="dx-hold cc-hold" id="mirror"><span class="dx-hold-fill"></span><span class="dx-hold-label">HOLD UP THE MIRROR</span></button></div>
     </section>`;
   }
+
+  // Who can see a coach's answers (must match privacy.html, section 4): our team, plus the organization's leader
+  // when the coach joined through an organization link.
+  const whoSees = org => (org && D.ORGANIZATIONS[org]
+    ? `The Coaching Starts With You team and the leader of ${D.ORGANIZATIONS[org].name} can see them.`
+    : "Only the Coaching Starts With You team can see them.");
+
+  // Grey italic line just above SEND MY CODE (sign up and sign in). Links open in a new tab so the form isn't lost.
+  const termsLine = doing => `<p class="cc-terms">By ${doing}, you agree to our <a href="terms.html" target="_blank" rel="noopener">Terms</a>
+    &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>`;
 
   // Short definitions under a question (e.g. TEACH / COACH on question 02).
   const defs = Q => (Q.defs ? `<div class="cc-defs">${Q.defs.map(([k, t]) => `<p><b>${esc(k)}</b>${esc(t)}</p>`).join("")}</div>` : "");
@@ -389,10 +406,9 @@
       ${field("su-last", "LAST NAME", "text", "family-name", s.last)}
       ${select("su-gender", "GENDER", D.GENDERS, s.gender)}
       ${select("su-age", "AGE", D.AGE_BRACKETS.map(a => [a, a]), s.age)}
-      <p class="cc-privacy">We save your name, email, gender, age and your check answers so your results are kept between checks. Only the programme team can see them.</p>
       ${authErr()}
       <div class="dx-spacer"></div>
-      <div class="cc-foot"><button class="dx-btn dx-btn--ink" id="sendCode" data-act="sendCode"${signupOk() && !ui.authBusy ? "" : " disabled"}>SEND MY CODE ${ICON.arrow}</button></div>
+      <div class="cc-foot">${termsLine("signing up")}<button class="dx-btn dx-btn--ink" id="sendCode" data-act="sendCode"${signupOk() && !ui.authBusy ? "" : " disabled"}>SEND MY CODE ${ICON.arrow}</button></div>
     </section>`;
   }
 
@@ -404,7 +420,7 @@
         <input class="cc-input" id="si-email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="${esc(ui.siEmail)}"></label>
       ${authErr()}
       <div class="dx-spacer"></div>
-      <div class="cc-foot"><button class="dx-btn dx-btn--ink" id="sendCode" data-act="sendCode"${emailOk(ui.siEmail) && !ui.authBusy ? "" : " disabled"}>SEND MY CODE ${ICON.arrow}</button></div>
+      <div class="cc-foot">${termsLine("signing in")}<button class="dx-btn dx-btn--ink" id="sendCode" data-act="sendCode"${emailOk(ui.siEmail) && !ui.authBusy ? "" : " disabled"}>SEND MY CODE ${ICON.arrow}</button></div>
     </section>`;
   }
 
@@ -597,13 +613,47 @@
     return act + (last ? `<h2 class="cc-tips-title">TIPS FOR YOUR NEXT SESSION</h2>${tipList(last.tips, false)}` : "") + state;
   }
 
+  /* Coaching guide: a numbered list (01 SEE IT · 02 OWN IT · 03 CHANGE IT) split by thin lines; tap a row to open it.
+     Then Pocket Mirror, with a picture of it on a phone. Nothing to answer or save. */
+  function vGuide() {
+    const G = D.GUIDE, M = G.more;
+    const row = (S, i) => {
+      const open = !!ui.guideOpen[S.key];
+      return `<section class="cc-guide-row${open ? " is-open" : ""}">
+        <button class="cc-guide-head" data-act="guideToggle" data-v="${S.key}" aria-expanded="${open}" aria-controls="guide-${S.key}">
+          <span class="cc-guide-num">0${i + 1}</span>
+          <span class="cc-guide-titles"><span class="cc-guide-name">${esc(S.name)}</span><span class="cc-guide-tag">${esc(S.tag)}</span></span>
+          <span class="cc-guide-chev">${ICON.down}</span></button>
+        ${open ? `<div class="cc-guide-body" id="guide-${S.key}">
+          <p class="cc-guide-lead">${esc(S.lead)}</p>
+          ${S.body.map(p => `<p class="cc-guide-p">${esc(p)}</p>`).join("")}
+          <p class="cc-guide-line">${esc(S.line)}</p>
+          <p class="cc-guide-label">PRACTICAL REMINDERS</p>
+          <ul class="cc-guide-list">${S.reminders.map(([b, rest]) => `<li><b>${esc(b)}</b> ${esc(rest)}</li>`).join("")}</ul>
+        </div>` : ""}</section>`;
+    };
+    return `<p class="dx-intro cc-guide-sub">${esc(G.sub)}</p>
+      <div class="cc-guide-rows">${G.sections.map(row).join("")}</div>
+      <p class="cc-guide-label cc-guide-more-label">${esc(M.label)}</p>
+      <a class="cc-pm" href="${esc(M.url)}" target="_blank" rel="noopener" aria-label="${esc(M.button)} (free, opens in a new tab)">
+        <img class="cc-pm-img" src="${esc(M.image)}" alt="${esc(M.imageAlt)}" width="600" height="900" loading="lazy">
+        <div class="cc-pm-text">
+          <div class="cc-pm-head"><span class="cc-pm-name">${esc(M.name)}</span><span class="cc-free">${esc(M.tag)}</span></div>
+          <p class="cc-pm-hook">${esc(M.hook)}</p>
+          ${M.line ? `<p class="cc-pm-line">${M.line.map(esc).join("<br>")}</p>` : ""}
+          <span class="cc-pm-go" aria-hidden="true">${ICON.arrow}</span>
+        </div>
+      </a>
+      <p class="cc-legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a></p>`;
+  }
+
   function vHome() {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
     const banner = (ui.tab === "see" && !standalone && !store.homeTipDismissed) ? `<div class="dx-note cc-banner"><div><b>Add to your Home Screen</b>
       So your results stay saved between checks. Tap Share, then Add to Home Screen.</div>
       <button class="cc-x" data-act="dismissTip" aria-label="Dismiss">${ICON.x}</button></div>` : "";
-    const titles = { see: "SEE IT", own: "OWN IT", change: "CHANGE IT" };
-    const body = ui.tab === "see" ? vSee() : ui.tab === "own" ? vOwn() : vChange();
+    const titles = { see: "SEE IT", own: "OWN IT", change: "CHANGE IT", guide: D.GUIDE.title };
+    const body = ui.tab === "see" ? vSee() : ui.tab === "own" ? vOwn() : ui.tab === "guide" ? vGuide() : vChange();
     const head = (ui.tab === "own" && ui.gateway) ? "" :
       `<h1 class="dx-title dx-title--xl" style="margin-top:0">${titles[ui.tab]}</h1>`;
     return `<section class="dx-screen cc-home">${head}${banner}${body}</section>${tabs()}${vPopup()}`;
@@ -822,6 +872,8 @@
     },
     actBack() { ui.actMode = null; go("action"); },
     tab(el) { ui.tab = el.dataset.v; ui.gateway = false; ui.popup = null; ui.periodOpen = false; render(); window.scrollTo(0, 0); },
+    // Coaching guide: open / close one section (the others stay as they are).
+    guideToggle(el) { const k = el.dataset.v; ui.guideOpen[k] = !ui.guideOpen[k]; render(); },
     abc(el) { ui.popup = el.dataset.v; render(); },
     closePopup() { ui.popup = null; render(); },
     periodToggle() { ui.periodOpen = !ui.periodOpen; render(); },
@@ -841,7 +893,7 @@
       sb.auth.signOut({ scope: "local" }).catch(() => {});
       try { localStorage.removeItem(KEY); } catch (e) { /* storage blocked */ }
       store = fresh();
-      Object.assign(ui, { view: "landing", tab: "see", popup: null, gateway: false, chip: null, periodOpen: false, readyShown: false,
+      Object.assign(ui, { view: "landing", tab: "see", popup: null, gateway: false, chip: null, periodOpen: false, readyShown: false, guideOpen: {},
         authMode: "signup", su: { first: "", last: "", email: "", gender: null, age: null }, siEmail: "", code: "", authErr: "" });
       render(); window.scrollTo(0, 0);
     },

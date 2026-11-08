@@ -22,6 +22,10 @@ window.CC_DATA = {
     { key: "week4",   label: "Week 4",        short: "Wk 4",    day: 28 },
     { key: "week6",   label: "Week 6",        short: "Wk 6",    day: 42 }
   ],
+  /* A check never opens sooner than this many days after the previous one was done, so a coach who is very late
+     doesn't do two checks back to back. On time = no difference. (Same rule in admin/admin.js and
+     supabase/functions/send-reminders/index.ts: change all three together.) */
+  MIN_GAP_DAYS: 7,
 
   QUESTIONS: [
     { stage: "See it", short: "Ask before telling",
@@ -164,5 +168,41 @@ window.CC_DATA = {
   GENDERS: [["woman", "Woman"], ["man", "Man"], ["nonbinary", "Non-binary"], ["undisclosed", "Prefer not to say"]],
   AGE_BRACKETS: ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"],
 
-  ACTION_EXAMPLE: "When a player misses a putt, I will ask what they noticed before I give any feedback."
+  ACTION_EXAMPLE: "When a player misses a putt, I will ask what they noticed before I give any feedback.",
+
+  /* COACHING GUIDE — the book button next to the tabs. Read-only: no scores, boxes or commitments.
+     Each section starts closed; tapping it shows the explanation and the practical reminders.
+     reminders = [bold opening phrase, the rest]. */
+  GUIDE: {
+    title: "COACHING GUIDE",
+    sub: "Becoming a better coach starts with you.",
+    sections: [
+      { key: "see", name: "SEE IT", tag: "AWARENESS", lead: "Be honest with yourself about how you coach.",
+        body: ["Reflect on your sessions. Have honest conversations. Ask for feedback and be prepared to hear what you might not want to hear."],
+        line: "You can't improve what you're unwilling to see.",
+        reminders: [["Ask before telling.", "Aim for more questions."],
+                    ["Listen to understand.", "Don't just prepare your next instruction."],
+                    ["Check understanding.", "If they can't answer, you may have said too much."]] },
+      { key: "own", name: "OWN IT", tag: "ACCEPTANCE", lead: "None of us has all the answers.",
+        body: ["Accept that you won't always get it right. Experience doesn't mean you've stopped learning. Some of your greatest lessons will come from getting things wrong."],
+        line: "You can't change what you're unwilling to own.",
+        reminders: [["Look in before you look out.", "Examine your contribution first."],
+                    ["Take responsibility.", "Focus on what you can control."],
+                    ["Learn from others.", "Observe coaches who do something better than you."]] },
+      { key: "change", name: "CHANGE IT", tag: "ACTION", lead: "Improvement comes from what you do consistently.",
+        body: ["Not your goals. Not your intentions. Your daily disciplines.",
+               "Choose one behaviour. Practise it. Repeat it. Make sure there's evidence of what you've changed."],
+        line: "Don't tell yourself what you're going to do. Show yourself what you've done.",
+        reminders: [["Start with one behaviour.", "Don't try to change everything."],
+                    ["Decide your moment before the session,", "not during it."],
+                    ["Practise with the next player,", "not next week."],
+                    ["Teach it once, then coach it.", "Give players the knowledge they need before expecting them to take ownership."],
+                    ["Finish with player ownership.", "End each session with the player explaining what they're working on."]] }
+    ],
+    more: { label: "CONTINUE YOUR DEVELOPMENT", name: "POCKET MIRROR", tag: "FREE",
+      hook: "One minute with yourself.",
+      line: ["Listens that turn", "intentions into actions."],   /* two lines under the hook */
+      image: "assets/pocket-mirror.jpg", imageAlt: "The Pocket Mirror app on two phones: One minute with yourself, and a new card unlocked.",
+      button: "Open Pocket Mirror", url: "https://thepocketmirror.netlify.app/" }   /* button = what screen readers say; the whole tile is the link */
+  }
 };

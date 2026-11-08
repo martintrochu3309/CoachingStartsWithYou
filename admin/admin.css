@@ -191,6 +191,10 @@
 .dsh-letter.is-C { background: var(--dsh-c); border-color: var(--dsh-c); color: var(--dx-ink); }
 .dsh-score { margin-left: 6px; font-size: 12px; color: var(--dx-muted); font-variant-numeric: tabular-nums; }
 .dsh-state { font-size: 13px; white-space: nowrap; color: var(--dx-muted); }
+/* Under a week's letter or state: "Same day" / "+4 days" / "Reminder sent 29 Nov" */
+.dsh-when { display: block; margin-top: 4px; font-size: 11px; white-space: nowrap; color: var(--dx-muted); }
+.dsh-when.is-late { color: var(--dsh-alert); }
+.dsh-table tr.dsh-total td { font-weight: 700; color: var(--dx-ink); border-top: 1px solid var(--dx-ink); }
 .dsh-state.is-ready { color: var(--dx-ink); font-weight: 500; }
 .dsh-dash { color: var(--dx-faint); }
 .dsh-action { max-width: 320px; font-size: 13px; line-height: 1.45; font-weight: 300; color: var(--dx-muted); }

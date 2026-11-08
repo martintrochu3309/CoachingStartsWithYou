@@ -97,9 +97,10 @@
 
   /* ---------- Data ---------- */
   async function load() {
-    const [p, c] = await Promise.all([
+    const [p, c, rm] = await Promise.all([
       sb.from("profiles").select("*"),
-      sb.from("checks").select("*").order("checked_at", { ascending: true })
+      sb.from("checks").select("*").order("checked_at", { ascending: true }),
+      sb.from("reminders").select("user_id,checkpoint,sent_at")   // reminder emails (missing table = no reminders yet)
     ]);
     if (p.error || c.error) {
       // Session gone (signed out elsewhere, expired): back to sign in.
@@ -119,7 +120,7 @@
       }
     }
     knownChecks = new Set(c.data.map(r => r.id));
-    data = { profiles: p.data, checks: c.data };
+    data = { profiles: p.data, checks: c.data, reminders: rm.error ? [] : rm.data || [] };
     ui.err = ""; ui.updated = Date.now();
     render();
   }
@@ -150,11 +151,21 @@
       const u = (by[c.user_id] = by[c.user_id] || {});
       if (!u[c.checkpoint] || u[c.checkpoint].checked_at < c.checked_at) u[c.checkpoint] = c;
     });
+    // Reminder emails sent, per coach and week.
+    const sentAt = {};
+    (data.reminders || []).forEach(r => { if (r.sent_at) sentAt[r.user_id + ":" + r.checkpoint] = r.sent_at; });
     const coaches = profiles.map(p => {
       const done = by[p.id] || {};
       const latest = [...CPS].reverse().map(cp => done[cp.key]).find(Boolean) || null;
       const last = Object.values(done).reduce((t, c) => Math.max(t, new Date(c.checked_at).getTime()), new Date(p.created_at).getTime());
-      return { p, done, latest, last, next: nextState(p, done, now) };
+      // Timing per week: when it opened, how many days after that it was done, and when the reminder went out.
+      const timing = {};
+      CPS.forEach((cp, i) => {
+        const opens = opensAt(p, i, done), r = done[cp.key];
+        timing[cp.key] = { opens, reminded: sentAt[p.id + ":" + cp.key] || null,
+          after: r && opens != null ? Math.max(0, Math.floor((new Date(r.checked_at).getTime() - opens) / DAY)) : null };
+      });
+      return { p, done, latest, last, timing, next: nextState(p, done, now) };
     });
 
     const weeks = CPS.map(cp => {
@@ -193,7 +204,20 @@
 
     // Follow-through: how many coaches got to each stage, and how many could have by now (check already open).
     const stages = [{ label: "Workshop", done: coaches.length, open: coaches.length, note: "Signed up" },
-      ...CPS.map(cp => ({ label: cp.label, done: coaches.filter(c => c.done[cp.key]).length, open: coaches.filter(c => c.done[cp.key] || isOpen(c.p, cp, now)).length }))];
+      ...CPS.map(cp => ({ label: cp.label, done: coaches.filter(c => c.done[cp.key]).length, open: coaches.filter(c => c.done[cp.key] || isOpen(c, cp, now)).length }))];
+
+    // Timing per week: opened, reminded, done within OVERDUE_DAYS of opening ("on time"), done later, not done yet.
+    const timing = CPS.map(cp => {
+      const t = { cp, opened: 0, reminded: 0, onTime: 0, late: 0, waiting: 0, days: [] };
+      coaches.forEach(c => {
+        const x = c.timing[cp.key];
+        if (x.reminded) t.reminded++;
+        if (c.done[cp.key]) { t.opened++; t.days.push(x.after); if (x.after < OVERDUE_DAYS) t.onTime++; else t.late++; }
+        else if (isOpen(c, cp, now) && c.next.cp === cp) { t.opened++; t.waiting++; }
+      });
+      t.avg = t.days.length ? t.days.reduce((s, d) => s + d, 0) / t.days.length : null;
+      return t;
+    });
 
     const counts = {
       coaches: coaches.length,
@@ -210,13 +234,22 @@
       : ui.sort === "recent"
         ? (a, b) => b.last - a.last
         : (a, b) => order[a.next.kind] - order[b.next.kind] || (b.next.late || 0) - (a.next.late || 0) || (a.next.due || 0) - (b.next.due || 0));
-    return { coaches, list, weeks, moves, road, roadN, abc, stages, counts };
+    return { coaches, list, weeks, moves, road, roadN, abc, stages, timing, counts };
   }
-  // Has this check opened for this coach yet? (Week 2 = 14 days after the workshop, etc.)
-  function isOpen(p, cp, now) {
-    if (p.start_date) return now >= new Date(p.start_date).getTime() + cp.day * DAY;
-    return cp === CPS[0] && startsAtWeek2(p.org);     // workshop already happened: Week 2 open from sign-up
+  /* When check i opens for this coach (same rule as the app and the reminder emails):
+     day 14 / 28 / 42 after the start, but never sooner than MIN_GAP_DAYS after the previous check was done.
+     Organizations that start at Week 2: Week 2 is open from sign-up. null = no clock yet (no first action). */
+  function opensAt(p, i, done) {
+    let t;
+    if (p.start_date) t = new Date(p.start_date).getTime() + CPS[i].day * DAY;
+    else if (i === 0 && startsAtWeek2(p.org)) t = new Date(p.created_at).getTime();
+    else return null;
+    const prev = i > 0 && done[CPS[i - 1].key];
+    if (prev) t = Math.max(t, new Date(prev.checked_at).getTime() + (D.MIN_GAP_DAYS || 0) * DAY);
+    return t;
   }
+  // Has this check opened for this coach yet?
+  function isOpen(c, cp, now) { const t = c.timing[cp.key].opens; return t != null && now >= t; }
   const checkName = () => (ui.check === "latest" ? "each coach's latest check" : CPS.find(cp => cp.key === ui.check).label);
   // Clean whole-number axis: 0 … top in steps of 1, 2, 5, 10…
   function yTicks(max) {
@@ -230,11 +263,8 @@
   function nextState(p, done, now) {
     const i = CPS.findIndex(cp => !done[cp.key]);
     if (i === -1) return { kind: "complete", label: "Programme complete" };
-    const cp = CPS[i];
-    let due;
-    if (p.start_date) due = new Date(p.start_date).getTime() + cp.day * DAY;
-    else if (i === 0 && startsAtWeek2(p.org)) due = new Date(p.created_at).getTime();   // workshop already happened: Week 2 open from sign-up
-    else return { kind: "waiting", cp, label: "No first action yet" };
+    const cp = CPS[i], due = opensAt(p, i, done);
+    if (due == null) return { kind: "waiting", cp, label: "No first action yet" };
     if (now < due) return { kind: "upcoming", cp, due, label: `Opens ${fmtDate(due)}` };
     const late = Math.floor((now - due) / DAY);
     if (late >= OVERDUE_DAYS) return { kind: "overdue", cp, due, late, label: `Overdue ${late} days` };
@@ -327,7 +357,7 @@
     </div>`;
     if (!N) return errBanner() + kpis + `<div class="dsh-card" style="margin-top:16px"><p class="dsh-empty" style="margin:0">No coaches have signed up${ui.org === "all" ? "" : " in this organization"} yet.</p></div>`;
     return errBanner() + kpis + `<div class="dsh-grid">
-      ${cardFollow(m)}${cardBars(m)}${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardCoaches(m)}
+      ${cardFollow(m)}${cardBars(m)}${cardTiming(m)}${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardCoaches(m)}
     </div>`;
   }
   const errBanner = () => (ui.err ? `<p class="dx-hint" role="alert" style="margin-top:18px">${esc(ui.err)}</p>` : "");
@@ -429,6 +459,28 @@
       ${body}</section>`;
   }
 
+  // Timing: who does their check when. On time = within OVERDUE_DAYS of it opening. Each coach's own clock.
+  function cardTiming(m) {
+    const T = m.timing, any = T.some(t => t.opened || t.reminded);
+    const cell = v => `<td class="num">${v == null || v === "" ? `<span class="dsh-dash">–</span>` : v}</td>`;
+    const rate = t => (t.onTime + t.late ? `${pct(t.onTime, t.onTime + t.late)}%` : null);
+    const rows = [
+      ["Check opened", t => t.opened || null],
+      ["Reminder email sent", t => t.reminded || null],
+      [`Done within ${OVERDUE_DAYS} days`, t => t.onTime || null],
+      ["Done later", t => t.late || null],
+      ["Open, not done yet", t => t.waiting || null],
+      ["Average days to do it", t => (t.avg == null ? null : t.avg.toFixed(1))],
+      ["On-time rate", rate]
+    ];
+    return `<section class="dsh-card"><h2 class="dsh-card-title">Timing</h2>
+      <p class="dsh-card-sub">Each coach has their own clock. A check opens 14 days after the last step (never sooner than ${D.MIN_GAP_DAYS || 0} days after their previous check), and a reminder email goes out at 9 AM Eastern that day.</p>
+      ${any ? `<div class="dsh-table-wrap"><table class="dsh-table"><thead><tr><th></th>${T.map(t => `<th class="num">${esc(t.cp.label.toUpperCase())}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map(([l, f]) => `<tr${l === "On-time rate" ? ' class="dsh-total"' : ""}><td>${esc(l)}</td>${T.map(t => cell(f(t))).join("")}</tr>`).join("")}</tbody></table></div>`
+        : `<p class="dsh-empty">Shows once the first checks open.</p>`}
+    </section>`;
+  }
+
   // Roadblocks at the chosen check: one series, horizontal bars.
   function cardRoad(m) {
     const keys = [...Object.keys(D.ROADBLOCKS).filter(k => D.ROADBLOCK_RULES.some(r => r.key === k)), "none"];
@@ -478,11 +530,20 @@
   // Every coach: where they are, each week's letter, and their current action. Click a row for details.
   function cardCoaches(m) {
     const weekCell = (c, cp) => {
-      const r = c.done[cp.key];
-      if (r) return `<span class="dsh-letter is-${r.abc}" tabindex="0" data-tip="<b>${cp.label} · ${r.abc}</b> ${esc(ABC_NAME(r.abc))}<br>Score ${r.score}/10 · ${fmtDate(r.checked_at)}">${r.abc}</span><span class="dsh-score">${r.score}</span>`;
+      const r = c.done[cp.key], t = c.timing[cp.key];
+      const remind = t.reminded ? `Reminder sent ${fmtDate(t.reminded)}` : "";
+      if (r) {
+        const when = t.after == null ? "" : t.after === 0 ? "Same day" : `+${t.after} day${t.after === 1 ? "" : "s"}`;
+        const tip = `<b>${cp.label} · ${r.abc}</b> ${esc(ABC_NAME(r.abc))}<br>Score ${r.score}/10 · done ${fmtDate(r.checked_at)}`
+          + (t.after == null ? "" : `<br>${t.after === 0 ? "Done the day it opened" : `Done ${t.after} day${t.after === 1 ? "" : "s"} after it opened`}`)
+          + (remind ? `<br>${remind}` : "");
+        return `<span class="dsh-letter is-${r.abc}" tabindex="0" data-tip="${tip}">${r.abc}</span><span class="dsh-score">${r.score}</span>`
+          + (when ? `<span class="dsh-when${t.after >= OVERDUE_DAYS ? " is-late" : ""}">${when}</span>` : "");
+      }
       if (c.next.cp === cp) {
-        if (c.next.kind === "overdue") return `<span class="dsh-state dsh-flag">${ICON.alert}${esc(c.next.label)}</span>`;
-        return `<span class="dsh-state${c.next.kind === "ready" ? " is-ready" : ""}">${esc(c.next.label)}</span>`;
+        const sub = remind ? `<span class="dsh-when">${remind}</span>` : "";
+        if (c.next.kind === "overdue") return `<span class="dsh-state dsh-flag">${ICON.alert}${esc(c.next.label)}</span>${sub}`;
+        return `<span class="dsh-state${c.next.kind === "ready" ? " is-ready" : ""}">${esc(c.next.label)}</span>${sub}`;
       }
       return `<span class="dsh-dash">–</span>`;
     };

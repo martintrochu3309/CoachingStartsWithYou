@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- PREVIEW of the coach app for building on your own computer: pretend login (any 6 digits), pretend database.
+       Add ?demo for the test bar (+14 days, sign out, reset) and ?org=golf-department for the Golf link.
+       Does nothing on the live website. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Preview · Coaching Starts With You</title>
+  <link rel="icon" href="assets/icon-192.png" type="image/png">
+  <link rel="stylesheet" href="dx/dailyxcellence.css">
+  <link rel="stylesheet" href="css/change-check.css">
+  <style>
+    .pv-badge { position: fixed; z-index: 60; right: 10px; top: calc(env(safe-area-inset-top) + 10px); padding: 6px 10px; border-radius: 12px;
+      background: #111; color: #fff; font: 700 9px/1 Arial, sans-serif; letter-spacing: .16em; cursor: pointer; opacity: .85; }
+  </style>
+</head>
+<body class="dx">
+  <main id="app" aria-live="polite"></main>
+  <script src="dev/fake-supabase.js"></script>
+  <script>
+    if (!window.CC_PREVIEW_LOCAL) {
+      document.getElementById("app").innerHTML = '<p class="dx-intro" style="padding:40px 24px">Preview only works on your own computer.</p>';
+    } else {
+      window.supabase = window.CC_FAKE_SUPABASE();
+      // Small badge so a preview is never mistaken for the real app. Tap it to wipe the pretend data and start over.
+      const b = document.createElement("button");
+      b.className = "pv-badge"; b.textContent = "PREVIEW · RESET"; b.title = "Wipe pretend accounts and checks";
+      b.onclick = () => { if (confirm("Wipe the pretend accounts and checks and start over?")) window.CC_PREVIEW_RESET(); };
+      document.body.appendChild(b);
+      ["js/data.js", "js/app.js"].reduce((p, src) => p.then(() => new Promise(r => {
+        const s = document.createElement("script"); s.src = src; s.onload = r; document.body.appendChild(s);
+      })), Promise.resolve());
+    }
+  </script>
+</body>
+</html>
