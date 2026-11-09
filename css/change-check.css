@@ -105,6 +105,19 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 .dx .cc-defs b { flex: none; width: 64px; padding-top: 2px; font: italic 700 15px/1.2 var(--dx-font-display); letter-spacing: -.01em; color: var(--dx-ink); }
 .cc-sheet .cc-defs { margin-top: 18px; }
 
+/* Question 06 / workshop day: three questions, each with a box. "When…" / "I will…" sit inside the box, grey. */
+.cc-reflect-help { font-size: 14px; line-height: 1.5; }
+.cc-rq { display: block; margin-top: 20px; }
+.cc-rq + .cc-rq { margin-top: 18px; }
+.cc-rq-q { display: block; font-size: 16px; line-height: 1.45; font-weight: 500; color: var(--dx-ink); }
+.cc-rq .dx-box-wrap { display: block; margin-top: 8px; }
+.cc-rq .dx-box { min-height: 0; padding: 12px 14px; font-size: 16px; font-weight: 300; }
+.cc-rq .dx-box::placeholder { font-style: italic; }
+.cc-rq .dx-box-starter { left: 15px; top: 13px; font-size: 16px; font-style: italic; font-weight: 300; }
+/* Example pop-up: the grey starter, then the answer; the action it becomes, last */
+.cc-rex-starter { font-style: italic; color: var(--dx-soft); }
+.cc-rex-result .dx-promise { margin-top: 6px; font-size: 16px; }
+
 /* Questions */
 .cc-q { margin: 12px 0 0; font-size: 17px; line-height: 1.5; font-weight: 300; color: var(--dx-ink); }
 /* Letter-spacing also adds space after the last letter; indent by the same amount so the word sits truly centred */

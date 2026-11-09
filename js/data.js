@@ -98,7 +98,8 @@ window.CC_DATA = {
               ["Prepare", "Decide exactly when and how you'll act."]] }
   },
 
-  /* Your action, at Week 2/4/6: what the coach reads, and the two choices (first = black button = what the method recommends).
+  /* Your action, at Week 2/4/6: the two choices (first = black button = what the method recommends).
+     (head/line are no longer shown on the action screen: the verdict now comes after the action, on the result screens.)
      Each choice key is saved as-is, so the dashboard can see what each A/B/C decided:
        new     → empty boxes                       (A: NEW ACTION)
        keep    → action locked, hold to commit      (A: KEEP IT · B: KEEP GOING · C: TRY AGAIN)
@@ -169,6 +170,21 @@ window.CC_DATA = {
   AGE_BRACKETS: ["18–24", "25–34", "35–44", "45–54", "55–64", "65+"],
 
   ACTION_EXAMPLE: "When a player misses a putt, I will ask what they noticed before I give any feedback.",
+
+  /* Question 06: three short written answers on one screen, after questions 01–05 (and on workshop day,
+     before the first action). "when" and "will" become the action: When <when>, I will <will>.
+     starter = the grey words inside the box, so the answer already reads as part of the action. */
+  REFLECT: {
+    title: "IN YOUR WORDS",
+    help: "Three short answers. A few words is enough. Your action comes from them.",
+    items: [
+      { key: "well", q: "What are you doing particularly well in your coaching?", starter: "" },
+      { key: "when", q: "When do you fall back into a coaching habit you want to change?", starter: "When " },
+      { key: "will", q: "What are you committed to doing differently?", starter: "I will " }
+    ],
+    /* One complete example (one coach's three answers), shown under "See an example". */
+    example: { well: "Building trust with my players.", when: "a player repeats the same mistake", will: "ask what they noticed before I give feedback" }
+  },
 
   /* COACHING GUIDE — the book button next to the tabs. Read-only: no scores, boxes or commitments.
      Each section starts closed; tapping it shows the explanation and the practical reminders.

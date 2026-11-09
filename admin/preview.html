@@ -27,6 +27,10 @@
       const names = [["Sam","Reed"],["Alex","Moreno"],["Jordan","Lee"],["Taylor","Brooks"],["Casey","Nguyen"],["Riley","Patel"],
                      ["Morgan","Hayes"],["Jamie","Ortiz"],["Drew","Kim"],["Avery","Shaw"],["Quinn","Diaz"],["Parker","Cole"]];
       const roads = ["unawareness", "habit", "skill", null];
+      // Sample answers to question 06 (doing well / falls back when… / will do differently).
+      const WELL = ["Building trust with my players.", "Keeping sessions focused.", "Giving clear, specific feedback.", "Planning my sessions well."];
+      const WHEN = ["a player repeats the same mistake", "I'm short on time at the end of a session", "a player gets frustrated", "the group gets noisy"];
+      const WILL = ["ask what they noticed before I give feedback", "let them try a fix before I step in", "pause and ask one question first", "give one cue, then step back"];
       let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
       names.forEach(([f, l], i) => {
         const id = "sample-" + i, org = i < 8 ? "golf-department" : null;
@@ -43,7 +47,8 @@
             q1: qs[0], q2: qs[1], q3: qs[2], q4: qs[3], q5: qs[4], score: qs.reduce((a, b) => a + b, 0), max_score: 10,
             status: abc === "A" ? "owning" : abc === "B" ? "renting" : "notstarted", abc, roadblock: roads[Math.floor(rnd() * 4)],
             action_when: "a player misses a putt,", action_will: "ask what they noticed before I give feedback.",
-            action_choice: k === 0 ? "first" : ["keep", "easier", "smaller", "new"][Math.floor(rnd() * 4)], action_changed: rnd() > .3 });
+            action_choice: k === 0 ? "first" : ["keep", "easier", "smaller", "new"][Math.floor(rnd() * 4)], action_changed: rnd() > .3,
+            reflect_well: WELL[(i + k) % 4], reflect_when: WHEN[(i + 2 * k) % 4], reflect_will: WILL[(i + k + 1) % 4] });
         });
       });
       // A reminder email for every check, sent at 9 AM the day it opened (each sample check was done a day later).

@@ -18,7 +18,8 @@
   // startDate = workshop day (when they committed to their first action); firstAction = that first action, kept for the dashboard.
   // records = the checks (Week 2, 4, 6); action = the current action.
   // dirty = the account/action has changes not yet saved to Supabase (each check has its own "synced").
-  function fresh() { return { version: 2, records: [], action: null, firstAction: null, startDate: null, demoOffsetDays: 0, homeTipDismissed: false, account: null, signedIn: false, dirty: false }; }
+  // workshopReflect = the three written answers given on workshop day, before the first action (checks keep their own).
+  function fresh() { return { version: 2, records: [], action: null, firstAction: null, startDate: null, workshopReflect: null, demoOffsetDays: 0, homeTipDismissed: false, account: null, signedIn: false, dirty: false }; }
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
@@ -93,24 +94,26 @@
      Pushes are "upserts" (insert or replace by id), so sending the same thing twice is harmless. */
   const iso = t => (t ? new Date(t).toISOString() : null);
   function profileRow(uid, email) {
-    const a = store.account, f = store.firstAction, c = store.action;
+    const a = store.account, f = store.firstAction, c = store.action, w = store.workshopReflect;
     return {
       id: uid, email: a.email || email, first_name: a.firstName, last_name: a.lastName,
       gender: a.gender, age_bracket: a.ageBracket, org: a.org || null, org_name: a.orgName || null,
       start_date: iso(store.startDate),
       first_action_when: f ? f.when : null, first_action_will: f ? f.will : null, first_action_date: f ? iso(f.date) : null,
-      current_action_when: c ? c.when : null, current_action_will: c ? c.will : null, current_action_date: c ? iso(c.date) : null
+      current_action_when: c ? c.when : null, current_action_will: c ? c.will : null, current_action_date: c ? iso(c.date) : null,
+      reflect_well: w ? w.well : null, reflect_when: w ? w.when : null, reflect_will: w ? w.will : null
     };
   }
   function checkRow(uid, r) {
-    const a = r.action || {};
+    const a = r.action || {}, w = r.reflect || {};
     return {
       id: r.id, user_id: uid, checkpoint: r.checkpoint, checked_at: iso(r.date),
       q1: r.answers[0], q2: r.answers[1], q3: r.answers[2], q4: r.answers[3], q5: r.answers[4],
       score: r.score, max_score: r.max || 10, status: r.status, abc: r.abc || D.STATUS[r.status].abc,
       roadblock: r.roadblock || null,
       action_when: a.when || null, action_will: a.will || null, action_choice: a.choice || null,
-      action_changed: a.changed == null ? null : !!a.changed
+      action_changed: a.changed == null ? null : !!a.changed,
+      reflect_well: w.well || null, reflect_when: w.when || null, reflect_will: w.will || null
     };
   }
   let pushing = null;
@@ -159,11 +162,13 @@
         startDate: P.start_date,
         firstAction: P.first_action_when ? { when: P.first_action_when, will: P.first_action_will, date: P.first_action_date } : null,
         action: P.current_action_when ? { when: P.current_action_when, will: P.current_action_will, date: P.current_action_date } : null,
+        workshopReflect: P.reflect_well || P.reflect_when ? { well: P.reflect_well, when: P.reflect_when, will: P.reflect_will } : null,
         records: c.data.map(R => {
           const answers = [R.q1, R.q2, R.q3, R.q4, R.q5];
           return { id: R.id, checkpoint: R.checkpoint, date: R.checked_at, answers, score: R.score, max: R.max_score,
             status: R.status, abc: R.abc, roadblock: R.roadblock, tips: tipsFor(answers), synced: true,
-            action: R.action_when ? { when: R.action_when, will: R.action_will, choice: R.action_choice, changed: R.action_changed } : undefined };
+            action: R.action_when ? { when: R.action_when, will: R.action_will, choice: R.action_choice, changed: R.action_changed } : undefined,
+            reflect: R.reflect_well || R.reflect_when ? { well: R.reflect_well, when: R.reflect_when, will: R.reflect_will } : undefined };
         })
       });
       save();
@@ -191,7 +196,8 @@
     // Signed in but no action yet (closed the app after the code): straight back to writing it
     // (organization that starts at Week 2: back to the first page, where BEGIN opens the Week 2 check).
     view: new URLSearchParams(location.search).has("start") || !store.signedIn ? "landing"
-      : started() ? "home" : startsAtWeek2() ? "landing" : "action",
+      : started() ? "home" : startsAtWeek2() ? "landing" : "reflect",
+    reflect: { well: "", when: "", will: "" },     // question 06: the three written answers
     q: 0, answers: [null, null, null, null, null], actExOpen: false,
     when: "", will: "", result: null,
     // Sign up / sign in
@@ -294,7 +300,8 @@
       `<a href="#${k}" data-act="tab" data-v="${k}"${ui.tab === k ? ' aria-current="page"' : ""}>${n}</a>`).join("")}</nav>
       <a href="#guide" class="cc-guide-btn${ui.tab === "guide" ? " is-on" : ""}" data-act="tab" data-v="guide" aria-label="Coaching guide"${ui.tab === "guide" ? ' aria-current="page"' : ""}>${ICON.book}<span>GUIDE</span></a></div>`;
   }
-  const bar = filled => `<div class="dx-bar" aria-hidden="true">${[0, 1, 2, 3, 4].map(k => `<span class="dx-bar-part">${k < filled ? '<i style="width:100%"></i>' : ""}</span>`).join("")}</div>`;
+  // Progress bar on a check: questions 01–05, then 06 (the three written answers) = 6 parts.
+  const bar = (filled, total = 6) => `<div class="dx-bar" aria-hidden="true">${Array.from({ length: total }, (_, k) => `<span class="dx-bar-part">${k < filled ? '<i style="width:100%"></i>' : ""}</span>`).join("")}</div>`;
 
   /* ---------- Screens: the check ---------- */
   function vLanding() {
@@ -443,6 +450,25 @@
     </section>`;
   }
 
+  /* Question 06 (on a check) / workshop day: three short written answers on one screen.
+     "When…" and "I will…" are already in the boxes, so the answers become the action. */
+  const cleanEnd = s => String(s || "").trim().replace(/[.,;:!\s]+$/, "");
+  const reflectOk = () => wordsOk(ui.reflect.well, 2, 2).ok && wordsOk(ui.reflect.when, 3, 2).ok && wordsOk(ui.reflect.will, 3, 2).ok;
+  function vReflect() {
+    const R = D.REFLECT, inCheck = !!ui.result;
+    return `<section class="dx-screen cc-reflect">
+      <div class="cc-top"><button class="cc-back" data-act="reflectBack" aria-label="Back">${ICON.back}</button>${inCheck ? bar(6) : ""}</div>
+      <h1 class="dx-title" style="margin-top:26px">${inCheck ? "06: " : ""}${esc(R.title)}</h1>
+      <p class="dx-text cc-reflect-help">${esc(R.help)}</p>
+      <button class="cc-ex-link" data-act="reflectExample" aria-haspopup="dialog">See an example</button>
+      ${R.items.map(it => `<label class="cc-rq"><span class="cc-rq-q">${esc(it.q)}</span>
+        <span class="dx-box-wrap">${it.starter ? `<span class="dx-box-starter" aria-hidden="true">${esc(it.starter)}</span>` : ""}
+          <textarea class="dx-box cc-rq-box" id="rf-${it.key}" rows="2" maxlength="160" placeholder="…">${esc(ui.reflect[it.key])}</textarea></span></label>`).join("")}
+      <div class="dx-spacer"></div>
+      <div class="cc-foot"><button class="dx-btn dx-btn--ink" id="reflectNext" data-act="reflectNext"${reflectOk() ? "" : " disabled"}>NEXT ${ICON.arrow}</button></div>
+    </section>${vPopup()}`;
+  }
+
   function vScore() {
     const r = ui.result;
     // No score number here: just where you are today (from question 04), then the five answers.
@@ -476,12 +502,12 @@
     // Workshop day (no check, ui.result empty): straight to writing the first action.
     if (ui.result && store.action && !ui.actMode) {
       const R = D.ACTION_REVIEW[ui.result.status];
-      // Reads top to bottom: your action (tile, as on CHANGE IT) → how it went today → what now.
+      // Your action (tile, as on CHANGE IT) → what now. The verdict (own it / rent it / not started) comes after, on the result screens.
       return `<section class="dx-screen cc-action">
+        <div class="cc-top"><button class="cc-back" data-act="toReflect" aria-label="Back">${ICON.back}</button></div>
         <h1 class="dx-title" style="margin-top:26px">YOUR ACTION</h1>
         ${actCard}
-        <h2 class="dx-title cc-verdict">${esc(R.head.toUpperCase())}</h2>
-        <p class="cc-review-line">${esc(R.line)}</p>
+        <p class="cc-review-line cc-keep-line">What do you want to do with it for the next two weeks?</p>
         <div class="dx-spacer"></div>
         <div class="cc-foot cc-choices">${R.choices.map(([v, label], k) =>
           `<button class="dx-btn ${k ? "dx-btn--outline" : "dx-btn--ink"}" data-act="actChoose" data-v="${v}">${label}</button>`).join("")}</div>
@@ -500,7 +526,8 @@
       </section>`;
     }
     const chk = actionCheck(ui.when, ui.will), ready = chk.ok;
-    const back = ui.actMode ? `<div class="cc-top"><button class="cc-back" data-act="actBack" aria-label="Back">${ICON.back}</button></div>` : "";
+    // Back: to the two choices (when changing an action), otherwise to the three written answers.
+    const back = `<div class="cc-top"><button class="cc-back" data-act="${ui.actMode ? "actBack" : "toReflect"}" aria-label="Back">${ICON.back}</button></div>`;
     const [title, help] = D.ACTION_EDIT[ui.actChoice] || D.ACTION_EDIT.first;
     return `<section class="dx-screen cc-action">${back}
       <h1 class="dx-title" style="margin-top:26px">${title}</h1>
@@ -664,6 +691,16 @@
 
   function vPopup() {
     if (!ui.popup) return "";
+    if (ui.popup === "rex") {     // "See an example" on question 06: one coach's three answers, and the action they become
+      const R = D.REFLECT, E = R.example;
+      return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet" role="dialog" aria-modal="true" aria-label="Example: ${esc(R.title)}">
+        <button class="cc-x" data-act="closePopup" aria-label="Close">${ICON.x}</button>
+        <h2 class="dx-title cc-qex-title">${ui.result ? "06: " : ""}${esc(R.title)}</h2>
+        ${R.items.map(it => `<div class="cc-qex-row"><p class="cc-road-label">${esc(it.q)}</p>
+          <p class="dx-text">${it.starter ? `<span class="cc-rex-starter">${esc(it.starter.trim())}…</span> ` : ""}${esc(E[it.key])}</p></div>`).join("")}
+        <div class="cc-qex-row cc-rex-result"><p class="cc-road-label">YOUR ACTION BECOMES:</p>${promise({ when: E.when, will: E.will })}</div>
+      </div>`;
+    }
     if (ui.popup === "qex") {     // "See an example" on a question: what YES / PARTLY / NO look like (read only)
       const Q = D.QUESTIONS[ui.q];
       return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet" role="dialog" aria-modal="true" aria-label="Example: ${esc(Q.short)}">
@@ -703,7 +740,7 @@
       const nc = nextCheck();
       if (nc && nc.due && !ui.readyShown && !ui.popup) { ui.popup = "ready"; ui.readyShown = true; }
     }
-    const v = { landing: vLanding, auth: vAuth, signup: vSignup, signin: vSignin, code: vCode, mirror: vMirror, q: vQuestion, score: vScore, guidance: vGuidance, action: vAction, home: vHome }[ui.view];
+    const v = { landing: vLanding, auth: vAuth, signup: vSignup, signin: vSignin, code: vCode, mirror: vMirror, q: vQuestion, reflect: vReflect, score: vScore, guidance: vGuidance, action: vAction, home: vHome }[ui.view];
     $app.innerHTML = v() + demoBar();
     bindInputs();
     centerPills();
@@ -733,11 +770,12 @@
   function begin() {
     ui.q = 0; ui.answers = [null, null, null, null, null];
     ui.popup = null; ui.result = null; ui.actMode = null; ui.actChoice = null; ui.when = ""; ui.will = "";
+    ui.reflect = { well: "", when: "", will: "" };
     // Not signed in on this device yet: sign up / sign in first (once).
     if (!store.signedIn) { ui.authErr = ""; return go("auth"); }
-    // Signed up but no action yet: workshop day, write it. Otherwise a check: the mirror, then question 01.
-    // Organization that starts at Week 2: no workshop-day screen, straight into the Week 2 check.
-    go(started() || startsAtWeek2() ? "mirror" : "action");
+    // Signed up but no action yet: workshop day: the three written answers, then the first action.
+    // Otherwise a check: the mirror, then question 01. Organization that starts at Week 2: straight into the Week 2 check.
+    go(started() || startsAtWeek2() ? "mirror" : "reflect");
   }
   /* Code checked: load this person's account, action and checks from Supabase, or create the account (first sign-up).
      Workshop day (no action yet) → write the first action. Already has one → SEE IT. */
@@ -768,7 +806,9 @@
     if (started()) return go("home");
     // Organization that starts at Week 2: straight into the Week 2 check (mirror, then question 01).
     if (startsAtWeek2()) { ui.q = 0; ui.answers = [null, null, null, null, null]; return go("mirror"); }
-    go("action");
+    // Workshop day: the three written answers, then the first action built from them.
+    ui.reflect = { well: "", when: "", will: "" };
+    go("reflect");
   }
   async function sendCode() {
     if (ui.authBusy) return;
@@ -797,6 +837,7 @@
       store.action = { ...a, date };
       if (!store.firstAction) store.firstAction = { ...a, date };
       if (!store.startDate) store.startDate = date;
+      if (!store.workshopReflect) store.workshopReflect = { ...ui.reflect };   // the three answers given on workshop day
       store.dirty = true; save(); pushAll();
       ui.tab = "see"; ui.chip = null; ui.readyShown = true;
       return go("home");
@@ -815,7 +856,10 @@
     const choice = !prev ? "first" : ui.actChoice || "keep";
     store.action = { ...a, date: new Date(now()).toISOString() };
     ui.result.action = { ...a, choice, changed: !prev || !same };
-    finish();
+    ui.result.reflect = { ...ui.reflect };
+    // Saved now (so closing the app on the result screens loses nothing), then the verdict: score → guidance → the app.
+    saveCheck();
+    go("score");
   }
   function buildResult() {
     const a = ui.answers.slice(), i = store.records.length;
@@ -832,20 +876,37 @@
       tips: tipsFor(a)
     };
   }
-  function finish() {
-    // The check and the (possibly new) current action both go to Supabase.
+  // The check (answers, written answers, action) and the current action both go to Supabase.
+  function saveCheck() {
     store.records.push({ ...ui.result, synced: false }); store.dirty = true; save(); pushAll();
-    ui.result = null; ui.tab = "see"; ui.chip = store.records.length - 1; ui.gateway = false; ui.readyShown = true;
+  }
+  // After the result screens: into the app, on SEE IT showing this check.
+  function finish() {
+    ui.result = null; ui.actMode = null; ui.tab = "see"; ui.chip = store.records.length - 1; ui.gateway = false; ui.readyShown = true;
     go("home");
   }
 
   const actions = {
-    // After question 05 the score comes straight up.
+    // After question 05: question 06 (the three written answers), then the action, then the result.
     begin, next() {
       if (ui.answers[ui.q] == null) return;
       if (ui.q < 4) { ui.q++; return go("q"); }
-      ui.result = buildResult(); go("score");
+      ui.result = buildResult(); go("reflect");
     },
+    // Question 06 → the action. Writing a first action: the boxes are filled from "When…" and "I will…".
+    // At Week 4/6 with an action already: the two choices first (NEW ACTION fills from the answers).
+    reflectNext() {
+      if (!reflectOk()) return;
+      ui.actMode = null; ui.actChoice = null;
+      if (!(ui.result && store.action)) { ui.when = cleanEnd(ui.reflect.when); ui.will = cleanEnd(ui.reflect.will); }
+      go("action");
+    },
+    reflectBack() {
+      if (ui.result) { ui.q = 4; return go("q"); }            // a check: back to question 05
+      go(started() ? "home" : "landing");                     // workshop day
+    },
+    toReflect() { ui.actMode = null; ui.actChoice = null; go("reflect"); },
+    reflectExample() { ui.popup = "rex"; render(); },
     // Tap shows the choice for a beat, then moves straight on (no Next button).
     answer(el) {
       if (ui.advancing) return;
@@ -869,12 +930,14 @@
     sendCode,
     resend() { if (Date.now() - ui.resentAt < 30000) return; sendCode(); },
     toGuidance() { go("guidance"); },
-    afterGuidance() { ui.actMode = null; go("action"); },
-    // Week 2/4/6 choice: "new" starts with empty boxes; "keep" shows the action locked; "easier"/"smaller" start from the current action.
+    afterGuidance: finish,
+    // Week 2/4/6 choice: "new" starts from today's written answers (When… / I will…); "keep" shows the action locked;
+    // "easier"/"smaller" start from the current action.
     actChoose(el) {
       const v = el.dataset.v, a = store.action;
       ui.actChoice = v; ui.actMode = "edit";
-      ui.when = v === "new" ? "" : a.when.replace(/,$/, ""); ui.will = v === "new" ? "" : a.will.replace(/\.$/, "");
+      ui.when = v === "new" ? cleanEnd(ui.reflect.when) : a.when.replace(/,$/, "");
+      ui.will = v === "new" ? cleanEnd(ui.reflect.will) : a.will.replace(/\.$/, "");
       go("action");
     },
     actBack() { ui.actMode = null; go("action"); },
@@ -945,6 +1008,16 @@
     } else if (commit) bindHold(commit, commitAction);   // KEEP IT: locked action, nothing to check
     const mirror = document.getElementById("mirror");
     if (mirror) bindHold(mirror, () => { ui.q = 0; go("q"); });
+    // Question 06: typing updates the answers (no re-render, keyboard stays open); NEXT unlocks when all three have a few words.
+    const rNext = document.getElementById("reflectNext");
+    if (rNext) {
+      D.REFLECT.items.forEach(it => {
+        const box = document.getElementById("rf-" + it.key);
+        box.addEventListener("input", () => { ui.reflect[it.key] = box.value; rNext.disabled = !reflectOk(); });
+      });
+      indentStarters();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(indentStarters);
+    }
   }
   /* Sign up / sign in boxes: typing updates state without re-rendering (keeps the keyboard open). */
   let resendTimer = null;

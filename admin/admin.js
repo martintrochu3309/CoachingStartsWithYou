@@ -357,7 +357,7 @@
     </div>`;
     if (!N) return errBanner() + kpis + `<div class="dsh-card" style="margin-top:16px"><p class="dsh-empty" style="margin:0">No coaches have signed up${ui.org === "all" ? "" : " in this organization"} yet.</p></div>`;
     return errBanner() + kpis + `<div class="dsh-grid">
-      ${cardFollow(m)}${cardBars(m)}${cardTiming(m)}${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardCoaches(m)}
+      ${cardFollow(m)}${cardBars(m)}${cardTiming(m)}${cardABC(m)}${cardScore(m)}${cardMoves(m)}${cardRoad(m)}${cardQuestions(m)}${cardChoices(m)}${cardWords(m)}${cardCoaches(m)}
     </div>`;
   }
   const errBanner = () => (ui.err ? `<p class="dx-hint" role="alert" style="margin-top:18px">${esc(ui.err)}</p>` : "");
@@ -569,9 +569,37 @@
         <tbody>${rows}</tbody></table></div>` : `<p class="dsh-empty">No coach matches “${esc(ui.search)}”.</p>`}
     </section>`;
   }
+  // The three written answers (question 06) of a check or of workshop day (row has reflect_well / _when / _will).
+  const WORDS = [["well", "Doing well"], ["when", "Falls back when…"], ["will", "Will do differently"]];
+  const wordsList = row => `<dl class="dsh-words-dl">${WORDS.map(([k, l]) => row["reflect_" + k]
+    ? `<dt>${esc(l)}</dt><dd>${esc(row["reflect_" + k])}</dd>` : "").join("")}</dl>`;
+
+  /* "In their words": the latest written answers to each of the three questions, across the coaches shown
+     (organization filter), newest first, with who and when. */
+  function cardWords(m) {
+    const items = [];
+    m.coaches.forEach(c => {
+      const who = `${c.p.first_name} ${(c.p.last_name || "").charAt(0)}.`;
+      if (c.p.reflect_well || c.p.reflect_when) items.push({ row: c.p, who, when: "Workshop", at: c.p.first_action_date || c.p.created_at });
+      CPS.forEach(cp => { const r = c.done[cp.key]; if (r && (r.reflect_well || r.reflect_when)) items.push({ row: r, who, when: cp.label, at: r.checked_at }); });
+    });
+    items.sort((a, b) => (a.at < b.at ? 1 : -1));
+    const LIMIT = 8;
+    const col = ([k, l], i) => {
+      const list = items.filter(x => x.row["reflect_" + k]).slice(0, LIMIT);
+      return `<div class="dsh-words-col"><p class="dsh-words-head">${esc(D.REFLECT.items[i].q)}</p>
+        ${list.length ? `<ul class="dsh-words-list">${list.map(x => `<li><span class="dsh-words-q">${k === "when" ? "When " : k === "will" ? "I will " : ""}${esc(x.row["reflect_" + k])}</span>
+          <span class="dsh-words-who">${esc(x.who)} · ${esc(x.when)}</span></li>`).join("")}</ul>` : `<p class="dsh-empty">No answers yet.</p>`}</div>`;
+    };
+    return `<section class="dsh-card dsh-card--wide"><h2 class="dsh-card-title">In their words</h2>
+      <p class="dsh-card-sub">The latest written answers to question 06 (and on workshop day), newest first. Look for patterns: the same moments and habits coming up again and again.</p>
+      <div class="dsh-words">${WORDS.map(col).join("")}</div></section>`;
+  }
+
   function detail(c) {
     const P = c.p;
-    const first = P.first_action_when ? `<p>First action (${P.first_action_date ? fmtDate(P.first_action_date) : ""}): When <b>${esc(P.first_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.first_action_will.replace(/\.$/, ""))}</b>.</p>` : "";
+    const first = (P.first_action_when ? `<p>First action (${P.first_action_date ? fmtDate(P.first_action_date) : ""}): When <b>${esc(P.first_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.first_action_will.replace(/\.$/, ""))}</b>.</p>` : "")
+      + (P.reflect_well || P.reflect_when ? `<div class="dsh-words-det"><p class="dsh-words-head">WORKSHOP DAY, IN THEIR WORDS</p>${wordsList(P)}</div>` : "");
     const boxes = CPS.map(cp => {
       const r = c.done[cp.key];
       if (!r) return `<div class="dsh-det dsh-det-empty">${esc(cp.label)}: not done</div>`;
@@ -580,6 +608,7 @@
       const choice = (CHOICES.find(([k]) => k === r.action_choice) || [0, ""])[1];
       return `<div class="dsh-det"><div class="dsh-det-head"><span class="dsh-letter is-${r.abc}">${r.abc}</span><b>${esc(cp.label)}</b><span>${r.score}/10 · ${fmtDate(r.checked_at)}</span></div>
         <ol class="cc-rows">${ans.map((p, i) => `<li class="cc-r"><span class="cc-num">0${i + 1}</span><span class="t">${esc(D.QUESTIONS[i].short)}</span>${dots(p)}</li>`).join("")}</ol>
+        ${r.reflect_well || r.reflect_when ? `<div class="dsh-words-det">${wordsList(r)}</div>` : ""}
         <p>Roadblock: <b>${esc(r.roadblock ? D.ROADBLOCKS[r.roadblock].name : "None showing")}</b></p>
         ${r.action_when ? `<p>${esc(choice)}${r.action_changed === false && r.action_choice !== "keep" ? " (same words)" : ""}: When <b>${esc(r.action_when.replace(/,$/, ""))}</b>, I will <b>${esc(r.action_will.replace(/\.$/, ""))}</b>.</p>` : ""}</div>`;
     }).join("");
@@ -698,12 +727,13 @@
     const inOrg = p => ui.org === "all" || (p.org || "") === ui.org;
     const P = Object.fromEntries(data.profiles.filter(inOrg).map(p => [p.id, p]));
     const head = ["first_name", "last_name", "email", "organization", "gender", "age_bracket", "signed_up", "checkpoint", "date",
-      "q1", "q2", "q3", "q4", "q5", "score", "max", "status", "abc", "roadblock", "action_when", "action_will", "action_choice", "action_changed"];
+      "q1", "q2", "q3", "q4", "q5", "score", "max", "status", "abc", "roadblock", "action_when", "action_will", "action_choice", "action_changed",
+      "doing_well", "falls_back_when", "will_do_differently"];
     const q = s => '"' + String(s == null ? "" : s).replace(/"/g, '""') + '"';
     const lines = data.checks.filter(c => P[c.user_id]).map(c => { const p = P[c.user_id];
       return [p.first_name, p.last_name, p.email, p.org_name || "", p.gender, p.age_bracket, p.created_at, c.checkpoint, c.checked_at,
         c.q1, c.q2, c.q3, c.q4, c.q5, c.score, c.max_score, c.status, c.abc, c.roadblock, c.action_when, c.action_will, c.action_choice,
-        c.action_changed == null ? "" : c.action_changed ? "yes" : "no"].map(q).join(","); });
+        c.action_changed == null ? "" : c.action_changed ? "yes" : "no", c.reflect_well, c.reflect_when, c.reflect_will].map(q).join(","); });
     const blob = new Blob([head.join(",") + "\n" + lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = `coaching-checks-${new Date().toISOString().slice(0, 10)}.csv`;
