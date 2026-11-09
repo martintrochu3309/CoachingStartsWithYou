@@ -1,7 +1,7 @@
 /* Offline copy of the app. Bump VERSION every time you upload a new build.
    Network first: always try the newest files online, and keep a copy; the saved copy is only used with no signal.
    (Cache-first used to keep serving old files after an update, which could mix old and new files.) */
-const VERSION = "cc-v41";
+const VERSION = "cc-v51";
 const FILES = [
   "./", "index.html", "manifest.json",
   "dx/dailyxcellence.css", "css/change-check.css",

@@ -281,9 +281,11 @@
       <circle class="cc-arc" cx="56" cy="56" r="50" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 56 56)"/>
       <text class="cc-ring-v" x="56" y="62" text-anchor="middle">${value}</text><text class="cc-ring-o" x="56" y="80" text-anchor="middle">${sub}</text></svg>`;
   }
-  function rows(ans) {
+  // The five answers. asWords: YES / PARTLY / NO on the right (SEE IT); otherwise the two dots (result screen).
+  function rows(ans, asWords) {
+    const word = p => `<span class="cc-ans-word is-${["no", "partly", "yes"][p]}">${WORDS[p]}</span>`;
     return '<ol class="cc-rows">' + ans.map((p, i) =>
-      `<li class="cc-r"><span class="cc-num">0${i + 1}</span><span class="t">${esc(D.QUESTIONS[i].short)}</span>${dots(p)}</li>`).join("") + "</ol>";
+      `<li class="cc-r"><span class="cc-num">0${i + 1}</span><span class="t">${esc(D.QUESTIONS[i].short)}</span>${asWords ? word(p) : dots(p)}</li>`).join("") + "</ol>";
   }
   function tipList(idx, withSource) {
     if (!idx.length) return `<p class="dx-text">No Partly or No answers this time. Use your lowest-scoring question as your next area for growth.</p>`;
@@ -486,7 +488,7 @@
     return `<section class="dx-screen cc-score">
       <p class="cc-road-label cc-today-label">TODAY, YOU…</p>
       <h1 class="cc-today">${esc(D.STATUS[r.status].today.toUpperCase())}</h1>
-      ${rows(r.answers)}
+      ${rows(r.answers, true)}
       <p class="dx-text cc-score-note">This describes your coaching right now, not a grade.</p>
       <div class="dx-spacer"></div>
       <div class="cc-foot"><button class="dx-btn dx-btn--ink" data-act="toGuidance">NEXT ${ICON.arrow}</button></div>
@@ -562,43 +564,49 @@
   /* ---------- Screens: home ---------- */
   function vSee() {
     const recs = store.records;
-    // Before Week 2: no results yet. Show when the first check opens, and the action they committed to.
+    // Before Week 2: no answers yet. When the first check opens (and TAKE IT NOW once it's ready).
     if (!recs.length) {
       const nc = nextCheck();
       const ready = nc && nc.due;
-      return `<div class="dx-card cc-sum cc-first"><p class="cc-road-label">YOUR FIRST CHECK…</p>
-          <p class="cc-today">${ready ? "IS READY" : `IN ${nc ? nc.left : 14} DAY${nc && nc.left === 1 ? "" : "S"}`}</p>
-          ${ready ? `<button class="dx-btn dx-btn--gold" data-act="begin">TAKE IT NOW ${ICON.arrow}</button>` : ""}</div>
-        ${store.action ? `<div class="cc-my"><p class="cc-road-label">AT THE WORKSHOP, YOU COMMITTED TO:</p>${promise(store.action)}</div>` : ""}`;
+      return `<h2 class="cc-tips-title cc-ans-title">MY ANSWERS</h2>
+        <p class="dx-text cc-ans-empty">${ready ? "Your first check is ready." : `Your first check opens in ${nc ? nc.left : 14} day${nc && nc.left === 1 ? "" : "s"}. Your answers will show here.`}</p>
+        ${ready ? `<button class="dx-btn dx-btn--ink cc-ans-go" data-act="begin">TAKE IT NOW ${ICON.arrow}</button>` : ""}`;
     }
     if (ui.chip == null || ui.chip === "all") ui.chip = recs.length - 1;
-    // Tap anywhere on the tile to choose a check; checks not taken yet stay greyed out.
-    // Phones/tablets: an invisible native select over the tile opens the phone's own picker (iPhone wheel).
+    // MY ANSWERS, with a small picker on the right to look back at another check (checks not taken yet stay greyed out).
+    // Phones/tablets: an invisible native select over the picker opens the phone's own picker (iPhone wheel).
     // Computers: our own Magistral menu, since desktop browsers draw native lists in the system font.
     const touch = window.matchMedia("(pointer: coarse)").matches;
     const periods = D.CHECKPOINTS.map((cp, i) => [i, cp.label, i < recs.length]);
     const isOn = v => String(ui.chip) === String(v);
-    let picker, menu = "", tileAttrs = "";
+    const i = ui.chip, r = recs[i];
+    const label = (D.CHECKPOINTS[i] || { label: "Extra" }).label.toUpperCase();
+    let picker, menu = "", pickAttrs = "";
     if (touch) {
-      picker = `<span class="cc-picker-arrow">${ICON.down}</span><select class="cc-native" id="period" aria-label="Show results for">${periods.map(([v, label, ok]) =>
-        `<option value="${v}"${isOn(v) ? " selected" : ""}${ok ? "" : " disabled"}>${label}</option>`).join("")}</select>`;
+      picker = `<select class="cc-native" id="period" aria-label="Show answers for">${periods.map(([v, l, ok]) =>
+        `<option value="${v}"${isOn(v) ? " selected" : ""}${ok ? "" : " disabled"}>${l}</option>`).join("")}</select>`;
     } else {
-      picker = `<span class="cc-picker-arrow${ui.periodOpen ? " is-open" : ""}">${ICON.down}</span>`;
-      tileAttrs = `role="button" tabindex="0" data-act="periodToggle" aria-haspopup="listbox" aria-expanded="${!!ui.periodOpen}"`;
-      if (ui.periodOpen) menu = `<div class="cc-menu" role="listbox" aria-label="Show results for">${periods.map(([v, label, ok]) =>
-        `<button class="cc-menu-item${isOn(v) ? " is-on" : ""}" role="option" aria-selected="${isOn(v)}" data-act="period" data-v="${v}"${ok ? "" : " disabled"}>${esc(label.toUpperCase())}</button>`).join("")}</div>`;
+      picker = "";
+      pickAttrs = `role="button" tabindex="0" data-act="periodToggle" aria-haspopup="listbox" aria-expanded="${!!ui.periodOpen}"`;
+      if (ui.periodOpen) menu = `<div class="cc-menu" role="listbox" aria-label="Show answers for">${periods.map(([v, l, ok]) =>
+        `<button class="cc-menu-item${isOn(v) ? " is-on" : ""}" role="option" aria-selected="${isOn(v)}" data-act="period" data-v="${v}"${ok ? "" : " disabled"}>${esc(l.toUpperCase())}</button>`).join("")}</div>`;
     }
+    return `<div class="cc-ans-head"><h2 class="cc-tips-title cc-ans-title">MY ANSWERS</h2>
+        <div class="cc-period cc-pick"><div class="cc-pick-btn" ${pickAttrs}><span>${label}</span><span class="cc-picker-arrow${ui.periodOpen ? " is-open" : ""}">${ICON.down}</span>${picker}</div>${menu}</div></div>
+      ${rows(r.answers, true)}
+      <p class="cc-ans-sub">A starting point, not a grade.</p>`;
+  }
 
-    // "TODAY, YOU ARE…" then the circled A/B/C from OWN IT (Own it = A, Rent it = B, Not started = C).
-    // Picking an older check changes the words to "AT WEEK 2, YOU WERE…".
-    const i = ui.chip, r = recs[i], L = D.STATUS[r.status].abc;
-    const latest = i === recs.length - 1;
-    const when = latest ? "TODAY" : `AT ${D.CHECKPOINTS[i].label.toUpperCase()}`;
-    return `<div class="cc-period"><div class="dx-card cc-sum cc-tile" ${tileAttrs}>${picker}
-        <p class="cc-road-label">${when}, YOU ${latest ? "ARE" : "WERE"}…</p>
-        <span class="cc-circ cc-sum-letter" role="img" aria-label="${L}: ${esc(D.ABC[L].name)}"><span>${L}</span></span></div>${menu}</div>
-      ${rows(r.answers)}
-      ${r.action ? `<div class="cc-my"><p class="cc-road-label">${when}, YOU COMMITTED TO${r.action.changed === false || r.action.choice === "kept" ? " (SAME AS BEFORE)" : ""}:</p>${promise(r.action)}</div>` : ""}`;
+  // OWN IT: right under the black letter tile, what it looks like: status (RENTING IT), their own voice, what it means.
+  // No label: sitting under the tile, it's clear which letter it explains.
+  function looks(last) {
+    const L = last && D.LOOKS_LIKE[last.status];
+    if (!L) return "";
+    const S = D.STATUS[last.status];
+    return `<section class="cc-looks">
+      <p class="dx-card-title cc-looks-title">${esc(S.name.toUpperCase())}</p>
+      <p class="cc-looks-quote">“${esc(L.quote)}”</p>
+      <p class="dx-text cc-looks-text">${esc(L.text)}</p></section>`;
   }
 
   function vOwn() {
@@ -622,18 +630,31 @@
     })() : `<div class="dx-card cc-road"><p class="cc-road-label">YOUR ROADBLOCK:</p><p class="dx-card-title">NONE SHOWING</p>
         <p class="dx-text">All five answers were Yes. Identify the coaching situation most likely to pull you back.</p></div>`;
     const gap = D.GAP_LINE.split(". ");
-    return `<p class="dx-intro" style="margin-top:6px">Which one am I right now?</p>
-      <div class="cc-abc">${["A", "B", "C"].map(L => `<button class="cc-circ${ui.popup === L ? " is-on" : ""}" data-act="abc" data-v="${L}" aria-label="${L}: ${esc(D.ABC[L].name)}"><span>${L}</span></button>`).join("")}</div>
+    // Where the coach is (their latest check): that letter's circle filled black, then a black tile with the letter and its name.
+    const mine = last ? D.STATUS[last.status].abc : null;
+    const cp = last ? (D.CHECKPOINTS.find(c => c.key === last.checkpoint) || { label: "Latest check" }) : null;
+    const you = mine
+      // The whole tile opens the same meaning pop-up as tapping the letter; the small arrow top-right shows it can be tapped.
+      ? `<button class="cc-you" data-act="abc" data-v="${mine}" aria-haspopup="dialog" aria-label="You are at ${mine}: ${esc(D.ABC[mine].name)}. See what it means">
+          <span class="cc-you-letter" aria-hidden="true"><span>${mine}</span></span>
+          <span class="cc-you-text"><span class="cc-you-label">YOU ARE HERE · ${esc(cp.label.toUpperCase())}</span><span class="cc-you-name">${esc(D.ABC[mine].name.toUpperCase())}</span></span>
+          <span class="cc-you-arrow" aria-hidden="true">${ICON.down}</span></button>`
+      : `<p class="dx-text cc-you-empty">Your letter shows here after your Week 2 check.</p>`;
+    return `<p class="dx-intro" style="margin-top:6px">Where are you?</p>
+      <div class="cc-abc">${["A", "B", "C"].map(L => `<button class="cc-circ${L === mine || ui.popup === L ? " is-on" : ""}" data-act="abc" data-v="${L}" aria-label="${L}: ${esc(D.ABC[L].name)}${L === mine ? " (where you are)" : ""}"><span>${L}</span></button>`).join("")}</div>
       <p class="dx-text cc-hint">Tap a letter to see what it means.</p>
-      <p class="dx-quote" style="margin-top:28px">${esc(gap[0])}. <em>${esc(gap.slice(1).join(". "))}</em></p>
+      ${you}
+      ${looks(last)}
+      <p class="dx-quote cc-gap">${esc(gap[0])}. <em>${esc(gap.slice(1).join(". "))}</em></p>
       ${road}`;
   }
 
   function vChange() {
     const last = store.records[store.records.length - 1], a = store.action;
-    // No tile: grey Magistral label with the "committed" lock beside it, then the action as body text.
+    // MY COMMITMENT: a grey tile (like NEXT CHECK) so it stands out; title in the same style as TIPS FOR YOUR NEXT SESSION,
+    // the "committed" lock beside it, then the action a little bigger with the coach's own words bold.
     // TEST ONLY: tapping the lock offers to reset everything. Remove before launch.
-    const act = a ? `<div class="cc-my"><p class="cc-road-label cc-my-head">MY ACTION <button class="cc-lock" data-act="askReset" aria-label="Committed. Test: reset everything">${ICON.lock}</button></p>${promise(a)}</div>` : "";
+    const act = a ? `<section class="dx-card cc-commit"><h2 class="cc-tips-title cc-commit-title">MY COMMITMENT <button class="cc-lock" data-act="askReset" aria-label="Committed. Test: reset everything">${ICON.lock}</button></h2>${promise(a)}</section>` : "";
     if (complete()) {
       const first = D.STATUS[store.records[0].status].name, end = D.STATUS[last.status].name;
       return act + `<div class="dx-card cc-done"><p class="dx-card-label">PROGRAMME COMPLETE</p>

@@ -139,6 +139,17 @@ window.CC_DATA = {
   },
   GAP_LINE: "The biggest gap isn't between C and B. It's between B and A.",
 
+  /* OWN IT: under the gap line, for the coach's letter at their latest check:
+     "WHAT B MEANS:" + STATUS.name (OWNING IT / RENTING IT / NOT STARTED), then a line in the coach's own voice, then what it means. */
+  LOOKS_LIKE: {
+    owning:     { quote: "I did what I said I'd do, and someone noticed.",
+                  text: "You're applying your chosen change consistently. Now protect it when things get difficult." },
+    renting:    { quote: "I did it when it was easy.",
+                  text: "You believe in the change, but you're not yet following through. A slip is information about what needs to change." },
+    notstarted: { quote: "I haven't really thought about it since the session.",
+                  text: "You haven't acted on your change yet. This is a starting point, not a verdict." }
+  },
+
   ROADBLOCKS: {
     unawareness: { name: "Unawareness", looks: "You don't realise you're doing it.",
       gateway: "Self-monitoring and feedback",
