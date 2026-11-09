@@ -179,6 +179,8 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 /* TEST ONLY: the lock is a button (reset). Bigger tap area without moving the icon. */
 button.cc-lock { padding: 12px; margin: -12px; }
 .cc-my .dx-promise { margin-top: 10px; font-size: 16px; line-height: 1.5; }
+/* SEE IT / CHANGE IT: the coach's own words in bold ("When" / "I will" stay light grey) */
+.cc-my .dx-own { font-weight: 500; }
 .cc-tips-title { margin: 32px 0 0; font: italic 700 20px/1.1 var(--dx-font-display); font-size: min(20px, 5.4vw); letter-spacing: -.02em; white-space: nowrap; }
 
 /* Action line */

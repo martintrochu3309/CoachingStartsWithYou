@@ -292,7 +292,17 @@
         <div class="dx-row-body${withSource ? "" : " no-eyebrow"}">${withSource ? `<p class="dx-eyebrow">FROM QUESTION ${q + 1}</p>` : ""}<p class="dx-answer">${esc(D.TIPS[q])}</p></div></section>`
     ).join("") + "</div>";
   }
-  const promise = a => `<p class="dx-promise">When <b class="dx-own">${esc(a ? a.when.replace(/,$/, "") : "")}</b>, I will <b class="dx-own">${esc(a ? a.will.replace(/\.$/, "") : "")}</b>.</p>`;
+  /* The coach's words carry on a sentence that already starts with "When" / "I will", so their first letter is lowercase:
+     "When a player…, I will ask…". Kept as typed: I / I'm / I'll…, and all-capital words (PGA). */
+  const lowerFirst = s => {
+    s = String(s || "");
+    const m = s.match(/^(\s*)(\S+)/);
+    if (!m) return s;
+    const w = m[2];
+    if (/^I(['’]|$)/.test(w) || (w.length > 1 && w === w.toUpperCase())) return s;
+    return m[1] + w.charAt(0).toLowerCase() + s.slice(m[1].length + 1);
+  };
+  const promise = a => `<p class="dx-promise">When <b class="dx-own">${esc(a ? lowerFirst(a.when).replace(/,$/, "") : "")}</b>, I will <b class="dx-own">${esc(a ? lowerFirst(a.will).replace(/\.$/, "") : "")}</b>.</p>`;
   // The method's three tabs stay one bar; the Coaching guide is a separate round button beside it.
   function tabs() {
     const t = [["see", "SEE IT"], ["own", "OWN IT"], ["change", "CHANGE IT"]];
@@ -452,7 +462,8 @@
 
   /* Question 06 (on a check) / workshop day: three short written answers on one screen.
      "When…" and "I will…" are already in the boxes, so the answers become the action. */
-  const cleanEnd = s => String(s || "").trim().replace(/[.,;:!\s]+$/, "");
+  // An answer dropped into the action: no full stop at the end, lowercase start (it follows "When" / "I will").
+  const cleanEnd = s => lowerFirst(String(s || "").trim().replace(/[.,;:!\s]+$/, ""));
   const reflectOk = () => wordsOk(ui.reflect.well, 2, 2).ok && wordsOk(ui.reflect.when, 3, 2).ok && wordsOk(ui.reflect.will, 3, 2).ok;
   function vReflect() {
     const R = D.REFLECT, inCheck = !!ui.result;
@@ -463,7 +474,7 @@
       <button class="cc-ex-link" data-act="reflectExample" aria-haspopup="dialog">See an example</button>
       ${R.items.map(it => `<label class="cc-rq"><span class="cc-rq-q">${esc(it.q)}</span>
         <span class="dx-box-wrap">${it.starter ? `<span class="dx-box-starter" aria-hidden="true">${esc(it.starter)}</span>` : ""}
-          <textarea class="dx-box cc-rq-box" id="rf-${it.key}" rows="2" maxlength="160" placeholder="…">${esc(ui.reflect[it.key])}</textarea></span></label>`).join("")}
+          <textarea class="dx-box cc-rq-box" id="rf-${it.key}" rows="2" maxlength="160" placeholder="…"${it.starter ? ' autocapitalize="none"' : ""}>${esc(ui.reflect[it.key])}</textarea></span></label>`).join("")}
       <div class="dx-spacer"></div>
       <div class="cc-foot"><button class="dx-btn dx-btn--ink" id="reflectNext" data-act="reflectNext"${reflectOk() ? "" : " disabled"}>NEXT ${ICON.arrow}</button></div>
     </section>${vPopup()}`;
@@ -534,9 +545,9 @@
       <p class="dx-text">${esc(help)}</p>
       <div class="cc-oneline">
         <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">When </span>
-          <textarea class="dx-box" id="when" rows="2" placeholder="…" aria-label="When">${esc(ui.when)}</textarea></div>
+          <textarea class="dx-box" id="when" rows="2" placeholder="…" aria-label="When" autocapitalize="none">${esc(ui.when)}</textarea></div>
         <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">I will </span>
-          <textarea class="dx-box" id="will" rows="2" placeholder="…" aria-label="I will" aria-describedby="act-note">${esc(ui.will)}</textarea></div>
+          <textarea class="dx-box" id="will" rows="2" placeholder="…" aria-label="I will" aria-describedby="act-note" autocapitalize="none">${esc(ui.will)}</textarea></div>
       </div>
       <p class="cc-ev-note" id="act-note" aria-live="polite">${chk.note}</p>
       <button class="cc-toggle" data-act="actExample" aria-expanded="${ui.actExOpen}"><span>SEE AN EXAMPLE</span>${ICON.down}</button>
@@ -741,9 +752,25 @@
       if (nc && nc.due && !ui.readyShown && !ui.popup) { ui.popup = "ready"; ui.readyShown = true; }
     }
     const v = { landing: vLanding, auth: vAuth, signup: vSignup, signin: vSignin, code: vCode, mirror: vMirror, q: vQuestion, reflect: vReflect, score: vScore, guidance: vGuidance, action: vAction, home: vHome }[ui.view];
-    $app.innerHTML = v() + demoBar();
-    bindInputs();
-    centerPills();
+    try {
+      $app.innerHTML = v() + demoBar();
+      bindInputs();
+      centerPills();
+    } catch (e) { showBroken(e); }
+  }
+  /* Safety net: never a blank screen. If a screen can't be drawn (e.g. an old saved copy of the app mixed with new
+     files), say so and offer RELOAD, which clears the saved copy and loads the newest version. Saved checks are safe. */
+  function showBroken(e) {
+    try { console.error(e); } catch (x) { /* no console */ }
+    $app.innerHTML = `<section class="dx-screen cc-landing"><div></div>
+      <div><h1 class="dx-title">SOMETHING WENT WRONG.</h1>
+      <p class="dx-intro">Tap reload to get the latest version of the app. Your checks are saved.</p></div>
+      <div class="cc-foot"><button class="dx-btn dx-btn--ink" id="hardReload">RELOAD</button></div></section>`;
+    document.getElementById("hardReload").onclick = async () => {
+      try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (x) { /* none */ }
+      try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (x) { /* none */ }
+      location.reload();
+    };
   }
   /* Question screens: push Yes/Partly/No down so PARTLY sits in the exact middle of the screen.
      Never less than the normal 22px gap, so a long question on a small phone doesn't get covered. */
@@ -829,7 +856,7 @@
   /* Save the action. Workshop day: it starts the programme clock (Week 2 is 14 days from now).
      At a check: saved on the check's record (history) and as the current action. */
   function commitAction() {
-    const a = { when: ui.when.trim().replace(/,?$/, ","), will: ui.will.trim().replace(/\.?$/, ".") };
+    const a = { when: lowerFirst(ui.when.trim()).replace(/,?$/, ","), will: lowerFirst(ui.will.trim()).replace(/\.?$/, ".") };
     if (!ui.result) {
       const date = new Date(now()).toISOString();
       // The programme clock starts here only once: a clock that's already running (a check done, or an
@@ -999,7 +1026,7 @@
         const chk = actionCheck(ui.when, ui.will);
         commit.disabled = !chk.ok;
         document.getElementById("act-note").textContent = chk.note;
-        preview.innerHTML = `<p class="dx-promise">When <b class="dx-own">${esc(ui.when.trim().replace(/,$/, ""))}</b>, I will <b class="dx-own">${esc(ui.will.trim().replace(/\.$/, ""))}</b>.</p>`;
+        preview.innerHTML = promise({ when: ui.when.trim(), will: ui.will.trim() });
       };
       w.addEventListener("input", upd); wi.addEventListener("input", upd);
       indentStarters();

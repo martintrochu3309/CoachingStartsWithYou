@@ -175,12 +175,12 @@ window.CC_DATA = {
      before the first action). "when" and "will" become the action: When <when>, I will <will>.
      starter = the grey words inside the box, so the answer already reads as part of the action. */
   REFLECT: {
-    title: "IN YOUR WORDS",
+    title: "NAME IT",
     help: "Three short answers. A few words is enough. Your action comes from them.",
     items: [
       { key: "well", q: "What are you doing particularly well in your coaching?", starter: "" },
       { key: "when", q: "When do you fall back into a coaching habit you want to change?", starter: "When " },
-      { key: "will", q: "What are you committed to doing differently?", starter: "I will " }
+      { key: "will", q: "What one area of your coaching are you committed to working on?", starter: "I will " }
     ],
     /* One complete example (one coach's three answers), shown under "See an example". */
     example: { well: "Building trust with my players.", when: "a player repeats the same mistake", will: "ask what they noticed before I give feedback" }

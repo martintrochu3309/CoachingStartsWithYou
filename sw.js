@@ -1,5 +1,7 @@
-/* Offline cache. Bump VERSION every time you upload a new build. */
-const VERSION = "cc-v37";
+/* Offline copy of the app. Bump VERSION every time you upload a new build.
+   Network first: always try the newest files online, and keep a copy; the saved copy is only used with no signal.
+   (Cache-first used to keep serving old files after an update, which could mix old and new files.) */
+const VERSION = "cc-v41";
 const FILES = [
   "./", "index.html", "manifest.json",
   "dx/dailyxcellence.css", "css/change-check.css",
@@ -9,24 +11,25 @@ const FILES = [
   "assets/logo.png", "assets/icon-180.png", "assets/icon-192.png", "assets/icon-512.png", "assets/icon-maskable-512.png"
 ];
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // Never let one missing file stop the update.
+  e.waitUntil(caches.open(VERSION).then(c => Promise.all(FILES.map(f => c.add(new Request(f, { cache: "reload" })).catch(() => {})))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
-  // Supabase (login, saving) always goes straight to the network: never cached, never answered with index.html.
   const url = new URL(e.request.url);
+  // Supabase (login, saving) always goes straight to the network: never cached, never answered with index.html.
   if (url.origin !== location.origin) return;
   // The admin dashboard and ?dashboard always load fresh from the network (never an old cached copy).
   if (url.pathname.includes("/admin/") || url.pathname.endsWith("/admin") || url.searchParams.has("dashboard")) return;
   e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      if (res.ok && new URL(e.request.url).origin === location.origin) {
-        const copy = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copy));
-      }
+    fetch(e.request, { cache: "no-cache" }).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); }
       return res;
-    }).catch(() => caches.match("index.html")))
+    }).catch(() => caches.match(e.request, { ignoreSearch: e.request.mode === "navigate" })
+      .then(hit => hit || (e.request.mode === "navigate" ? caches.match("index.html") : undefined))
+      .then(hit => hit || Response.error()))
   );
 });

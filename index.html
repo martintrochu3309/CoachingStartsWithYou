@@ -38,6 +38,20 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
     }
+    // Safety net: if the app didn't draw anything (e.g. an old saved copy mixed with new files), offer RELOAD
+    // instead of a blank screen. RELOAD clears the saved copy of the app; checks saved in the account are safe.
+    window.addEventListener("load", () => setTimeout(() => {
+      const app = document.getElementById("app");
+      if (!app || app.innerHTML.trim()) return;
+      app.innerHTML = '<div style="max-width:480px;margin:0 auto;padding:40vh 24px 0;font-family:Arial,sans-serif;text-align:center">'
+        + '<p style="font-size:17px;color:#111">Something went wrong loading the app.</p>'
+        + '<button id="hardReload" style="margin-top:16px;height:52px;padding:0 32px;border:0;border-radius:26px;background:#111;color:#fff;font-weight:700;letter-spacing:.18em">RELOAD</button></div>';
+      document.getElementById("hardReload").onclick = async () => {
+        try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
+        try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
+        location.reload();
+      };
+    }, 2000));
   </script>
 </body>
 </html>

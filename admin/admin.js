@@ -549,7 +549,7 @@
     };
     const rows = m.list.map(c => {
       const P = c.p, open = ui.open === P.id;
-      const act = P.current_action_when ? `When <b>${esc(P.current_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.current_action_will.replace(/\.$/, ""))}</b>.` : `<span class="dsh-dash">No action yet</span>`;
+      const act = P.current_action_when ? `When <b>${esc(lowerFirst(P.current_action_when).replace(/,$/, ""))}</b>, I will <b>${esc(lowerFirst(P.current_action_will).replace(/\.$/, ""))}</b>.` : `<span class="dsh-dash">No action yet</span>`;
       const main = `<tr class="dsh-coach-row${ui.newRows.has(P.id) ? " is-new" : ""}" data-act="toggle" data-v="${P.id}" aria-expanded="${open}" tabindex="0">
         <td><span class="dsh-name">${esc(P.first_name)} ${esc(P.last_name)}</span><span class="dsh-email">${esc(P.email)}</span></td>
         <td class="dsh-org">${esc(orgName(P.org))}</td>
@@ -569,10 +569,19 @@
         <tbody>${rows}</tbody></table></div>` : `<p class="dsh-empty">No coach matches “${esc(ui.search)}”.</p>`}
     </section>`;
   }
+  // The coach's words follow "When" / "I will", so they start lowercase (kept: I / I'm…, and all-capital words). Same as the app.
+  const lowerFirst = s => {
+    s = String(s || "");
+    const m = s.match(/^(\s*)(\S+)/);
+    if (!m) return s;
+    const w = m[2];
+    if (/^I(['’]|$)/.test(w) || (w.length > 1 && w === w.toUpperCase())) return s;
+    return m[1] + w.charAt(0).toLowerCase() + s.slice(m[1].length + 1);
+  };
   // The three written answers (question 06) of a check or of workshop day (row has reflect_well / _when / _will).
   const WORDS = [["well", "Doing well"], ["when", "Falls back when…"], ["will", "Will do differently"]];
   const wordsList = row => `<dl class="dsh-words-dl">${WORDS.map(([k, l]) => row["reflect_" + k]
-    ? `<dt>${esc(l)}</dt><dd>${esc(row["reflect_" + k])}</dd>` : "").join("")}</dl>`;
+    ? `<dt>${esc(l)}</dt><dd>${esc(k === "well" ? row["reflect_" + k] : lowerFirst(row["reflect_" + k]))}</dd>` : "").join("")}</dl>`;
 
   /* "In their words": the latest written answers to each of the three questions, across the coaches shown
      (organization filter), newest first, with who and when. */
@@ -588,7 +597,7 @@
     const col = ([k, l], i) => {
       const list = items.filter(x => x.row["reflect_" + k]).slice(0, LIMIT);
       return `<div class="dsh-words-col"><p class="dsh-words-head">${esc(D.REFLECT.items[i].q)}</p>
-        ${list.length ? `<ul class="dsh-words-list">${list.map(x => `<li><span class="dsh-words-q">${k === "when" ? "When " : k === "will" ? "I will " : ""}${esc(x.row["reflect_" + k])}</span>
+        ${list.length ? `<ul class="dsh-words-list">${list.map(x => `<li><span class="dsh-words-q">${k === "when" ? "When " : k === "will" ? "I will " : ""}${esc(k === "well" ? x.row["reflect_" + k] : lowerFirst(x.row["reflect_" + k]))}</span>
           <span class="dsh-words-who">${esc(x.who)} · ${esc(x.when)}</span></li>`).join("")}</ul>` : `<p class="dsh-empty">No answers yet.</p>`}</div>`;
     };
     return `<section class="dsh-card dsh-card--wide"><h2 class="dsh-card-title">In their words</h2>
@@ -598,7 +607,7 @@
 
   function detail(c) {
     const P = c.p;
-    const first = (P.first_action_when ? `<p>First action (${P.first_action_date ? fmtDate(P.first_action_date) : ""}): When <b>${esc(P.first_action_when.replace(/,$/, ""))}</b>, I will <b>${esc(P.first_action_will.replace(/\.$/, ""))}</b>.</p>` : "")
+    const first = (P.first_action_when ? `<p>First action (${P.first_action_date ? fmtDate(P.first_action_date) : ""}): When <b>${esc(lowerFirst(P.first_action_when).replace(/,$/, ""))}</b>, I will <b>${esc(lowerFirst(P.first_action_will).replace(/\.$/, ""))}</b>.</p>` : "")
       + (P.reflect_well || P.reflect_when ? `<div class="dsh-words-det"><p class="dsh-words-head">WORKSHOP DAY, IN THEIR WORDS</p>${wordsList(P)}</div>` : "");
     const boxes = CPS.map(cp => {
       const r = c.done[cp.key];
@@ -610,7 +619,7 @@
         <ol class="cc-rows">${ans.map((p, i) => `<li class="cc-r"><span class="cc-num">0${i + 1}</span><span class="t">${esc(D.QUESTIONS[i].short)}</span>${dots(p)}</li>`).join("")}</ol>
         ${r.reflect_well || r.reflect_when ? `<div class="dsh-words-det">${wordsList(r)}</div>` : ""}
         <p>Roadblock: <b>${esc(r.roadblock ? D.ROADBLOCKS[r.roadblock].name : "None showing")}</b></p>
-        ${r.action_when ? `<p>${esc(choice)}${r.action_changed === false && r.action_choice !== "keep" ? " (same words)" : ""}: When <b>${esc(r.action_when.replace(/,$/, ""))}</b>, I will <b>${esc(r.action_will.replace(/\.$/, ""))}</b>.</p>` : ""}</div>`;
+        ${r.action_when ? `<p>${esc(choice)}${r.action_changed === false && r.action_choice !== "keep" ? " (same words)" : ""}: When <b>${esc(lowerFirst(r.action_when).replace(/,$/, ""))}</b>, I will <b>${esc(lowerFirst(r.action_will).replace(/\.$/, ""))}</b>.</p>` : ""}</div>`;
     }).join("");
     return `${first}<div class="dsh-detail-grid" style="margin-top:10px">${boxes}</div>
       <p class="dsh-note">Signed up ${fmtDate(P.created_at)}${P.start_date ? ` · programme clock started ${fmtDate(P.start_date)}` : ""} · ${esc(P.gender)} · ${esc(P.age_bracket)}</p>`;
