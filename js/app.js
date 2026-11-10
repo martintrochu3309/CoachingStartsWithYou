@@ -34,7 +34,9 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* storage full or blocked */ } }
   let store = load();
 
-  const now = () => Date.now() + (store.demoOffsetDays || 0) * DAY;
+  // The app's clock. The ?demo "+14 days" jumps only count in test mode on your own computer: on the live site a leftover
+  // jump saved on a phone is ignored, so checks are always dated and timed for real.
+  const now = () => Date.now() + (DEMO ? (store.demoOffsetDays || 0) : 0) * DAY;
   // The coach's organization: saved on their account once signed up, otherwise the one in the link.
   const orgCode = () => (store.account && store.account.org) || LINK_ORG;
   const startsAtWeek2 = () => { const o = D.ORGANIZATIONS[orgCode()]; return !!(o && o.startAtWeek2); };

@@ -60,7 +60,9 @@
     if (ui.busy || !emailOk(ui.email)) return;
     ui.busy = true; ui.err = ""; render();
     try {
-      const { error } = await sb.auth.signInWithOtp({ email: ui.email.trim().toLowerCase(), options: { shouldCreateUser: false } });
+      // shouldCreateUser: true, so an admin (e.g. someone added to public.admins who never used the coach app) can sign in
+      // directly. Being logged in gives nothing by itself: only emails on the admin list see any data (is_admin + the database rules).
+      const { error } = await sb.auth.signInWithOtp({ email: ui.email.trim().toLowerCase(), options: { shouldCreateUser: true } });
       ui.busy = false;
       if (error) { ui.err = authError(error, "We couldn't send the code. Try again in a moment."); return render(); }
       ui.code = ""; ui.resentAt = Date.now(); ui.view = "code"; render();
