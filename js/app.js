@@ -9,7 +9,10 @@
   const DAY = 86400000;
   const WORDS = ["NO", "PARTLY", "YES"];          // index = points
   const ANSWER = ["No", "Partly", "Yes"];
-  const DEMO = new URLSearchParams(location.search).has("demo");
+  // ?demo test bar (+14 days, sign out, reset): only on your own computer (preview pages / localhost), never on the live site,
+  // so nobody can skip ahead or save pretend dates to the real database.
+  const DEMO = new URLSearchParams(location.search).has("demo")
+    && (!!window.CC_PREVIEW_LOCAL || location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname));
   // Organization from the link (…/?org=img). Only codes listed in data.js count.
   const LINK_ORG = (() => { const c = (new URLSearchParams(location.search).get("org") || "").trim().toLowerCase(); return D.ORGANIZATIONS[c] ? c : null; })();
 
@@ -204,7 +207,7 @@
     authMode: "signup", su: { first: "", last: "", email: "", gender: null, age: null }, siEmail: "",
     code: "", authErr: "", authBusy: false, resentAt: 0,
     tab: "see", chip: null, popup: null, gateway: false, readyShown: false,
-    guideOpen: {}                    // Coaching guide: which sections are open (all closed to start)
+    guideOpen: { see: true }         // Coaching guide: which sections are open (SEE IT open to start)
   };
 
   /* ---------- Helpers ---------- */
@@ -268,6 +271,7 @@
     down: svg('<path d="M6 9l6 6 6-6"/>'),
     x: svg('<path d="M6 6l12 12M18 6L6 18"/>', 2.2),
     plus: svg('<path d="M12 5v14M5 12h14"/>', 2.4, 18),
+    minus: svg('<path d="M5 12h14"/>', 2.4, 18),
     lock: svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', 2.4, 16),
     book: svg('<path d="M2 5h6a4 4 0 0 1 4 4v11a3 3 0 0 0-3-3H2z"/><path d="M22 5h-6a4 4 0 0 0-4 4v11a3 3 0 0 1 3-3h7z"/>', 1.8, 20)
   };
@@ -344,12 +348,13 @@
   // Who can see a coach's answers (must match privacy.html, section 4): our team, plus the organization's leader
   // when the coach joined through an organization link.
   const whoSees = org => (org && D.ORGANIZATIONS[org]
-    ? `The Coaching Starts With You team and the leader of ${D.ORGANIZATIONS[org].name} can see them.`
+    ? `The Coaching Starts With You team and the ${D.ORGANIZATIONS[org].leader || "leader"} of ${D.ORGANIZATIONS[org].name} can see them.`
     : "Only the Coaching Starts With You team can see them.");
 
-  // Grey italic line just above SEND MY CODE (sign up and sign in). Links open in a new tab so the form isn't lost.
-  const termsLine = doing => `<p class="cc-terms">By ${doing}, you agree to our <a href="terms.html" target="_blank" rel="noopener">Terms</a>
-    &amp; <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</p>`;
+  // Grey italic line just above SEND MY CODE (sign up and sign in). "Terms" and "Privacy Policy" look like links
+  // (underlined) but don't open anything — by choice. The pages still exist at terms.html / privacy.html.
+  const termsLine = doing => `<p class="cc-terms">By ${doing}, you agree to our <span class="cc-terms-link">Terms</span>
+    &amp; <span class="cc-terms-link">Privacy Policy</span>.</p>`;
 
   // Short definitions under a question (e.g. TEACH / COACH on question 02).
   const defs = Q => (Q.defs ? `<div class="cc-defs">${Q.defs.map(([k, t]) => `<p><b>${esc(k)}</b>${esc(t)}</p>`).join("")}</div>` : "");
@@ -382,11 +387,10 @@
     return { count: words.length, ok: words.length >= min && unique.size >= minUnique && !mashing };
   }
   /* Your action: When… and I will… each need 4+ words (3+ different). */
+  // Something written (at least one word) — no minimum length. Used for the action and the question 06 boxes.
+  const hasWords = s => /\p{L}/u.test(String(s || ""));
   function actionCheck(when, will) {
-    const a = wordsOk(when, 4, 3), b = wordsOk(will, 4, 3), ok = a.ok && b.ok;
-    const note = !(a.count || b.count) ? "" : ok ? "Clear and specific. Nice."
-      : "Keep going. A few more words on each line will make the moment and the action clear.";
-    return { ok, note };
+    return { ok: hasWords(when) && hasWords(will), note: "" };
   }
   /* ---------- Screens: sign up / sign in (once per device; then straight to the mirror) ---------- */
   const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
@@ -466,8 +470,42 @@
      "When…" and "I will…" are already in the boxes, so the answers become the action. */
   // An answer dropped into the action: no full stop at the end, lowercase start (it follows "When" / "I will").
   const cleanEnd = s => lowerFirst(String(s || "").trim().replace(/[.,;:!\s]+$/, ""));
-  const reflectOk = () => wordsOk(ui.reflect.well, 2, 2).ok && wordsOk(ui.reflect.when, 3, 2).ok && wordsOk(ui.reflect.will, 3, 2).ok;
+  const reflectOk = () => hasWords(ui.reflect.well) && hasWords(ui.reflect.when) && hasWords(ui.reflect.will);
+  /* 06 when the coach already has an action (Golf: Week 4/6; plain link: Week 2/4/6): ONE screen.
+     Box 1 (what you do well) is fresh; boxes 2 and 3 are their current commitment, and they decide here what to do with it:
+     the two choices for their result (e.g. KEEP GOING / MAKE IT EASIER). Keep = hold I'M COMMITTED; easier / smaller =
+     the When / I will boxes open, filled in, to adjust; new = empty boxes. Then the result screens. */
+  const wellOk = () => hasWords(ui.reflect.well);
+  const nameItReady = () => wellOk() && (ui.actChoice === "keep" || (!!ui.actChoice && actionCheck(ui.when, ui.will).ok));
+  function vNameIt() {
+    const R = D.REFLECT, A = D.ACTION_REVIEW[ui.result.status], c = ui.actChoice, edit = !!c && c !== "keep";
+    const help = !c ? "" : c === "keep" ? "Same commitment, another two weeks. Hold the button to commit to it again."
+      : (D.ACTION_EDIT[c] || D.ACTION_EDIT.new)[1];
+    return `<section class="dx-screen cc-reflect cc-nameit">
+      <div class="cc-top"><button class="cc-back" data-act="reflectBack" aria-label="Back">${ICON.back}</button>${bar(6)}</div>
+      <h1 class="dx-title" style="margin-top:26px">06: ${esc(R.title)}</h1>
+      <button class="cc-ex-link" data-act="reflectExample" aria-haspopup="dialog">See an example</button>
+      <label class="cc-rq"><span class="cc-rq-q">${esc(R.items[0].q)}</span>
+        <span class="dx-box-wrap"><textarea class="dx-box cc-rq-box" id="rf-well" rows="2" maxlength="160" placeholder="…">${esc(ui.reflect.well)}</textarea></span></label>
+      <p class="cc-road-label cc-nameit-label">YOUR CURRENT COMMITMENT</p>
+      ${edit ? `<div class="cc-oneline cc-nameit-boxes">
+          <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">When </span>
+            <textarea class="dx-box" id="when" rows="2" placeholder="…" aria-label="When" autocapitalize="none">${esc(ui.when)}</textarea></div>
+          <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">I will </span>
+            <textarea class="dx-box" id="will" rows="2" placeholder="…" aria-label="I will" autocapitalize="none">${esc(ui.will)}</textarea></div></div>
+`
+        : `<div class="dx-card cc-nameit-card">${promise(store.action)}</div>`}
+      <div class="dx-pills cc-nameit-choices">${A.choices.map(([v, label]) =>
+        `<button class="dx-pill${c === v ? " is-on" : ""}" data-act="nameChoose" data-v="${v}" aria-pressed="${c === v}">${label}</button>`).join("")}</div>
+      ${help ? `<p class="dx-text cc-nameit-help">${esc(help)}</p>` : ""}
+      <div class="dx-spacer"></div>
+      <div class="cc-foot">${c ? `<button class="dx-hold cc-hold" id="commit"${nameItReady() ? "" : " disabled"}><span class="dx-hold-fill"></span><span class="dx-hold-label">I'M COMMITTED</span></button>`
+        : `<p class="dx-text cc-choose">Choose what to do with your commitment.</p>`}</div>
+    </section>${vPopup()}`;
+  }
+
   function vReflect() {
+    if (ui.result && store.action) return vNameIt();
     const R = D.REFLECT, inCheck = !!ui.result;
     return `<section class="dx-screen cc-reflect">
       <div class="cc-top"><button class="cc-back" data-act="reflectBack" aria-label="Back">${ICON.back}</button>${inCheck ? bar(6) : ""}</div>
@@ -549,9 +587,8 @@
         <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">When </span>
           <textarea class="dx-box" id="when" rows="2" placeholder="…" aria-label="When" autocapitalize="none">${esc(ui.when)}</textarea></div>
         <div class="dx-box-wrap"><span class="dx-box-starter" aria-hidden="true">I will </span>
-          <textarea class="dx-box" id="will" rows="2" placeholder="…" aria-label="I will" aria-describedby="act-note" autocapitalize="none">${esc(ui.will)}</textarea></div>
+          <textarea class="dx-box" id="will" rows="2" placeholder="…" aria-label="I will" autocapitalize="none">${esc(ui.will)}</textarea></div>
       </div>
-      <p class="cc-ev-note" id="act-note" aria-live="polite">${chk.note}</p>
       <button class="cc-toggle" data-act="actExample" aria-expanded="${ui.actExOpen}"><span>SEE AN EXAMPLE</span>${ICON.down}</button>
       ${ui.actExOpen ? `<p class="dx-note cc-example">${esc(D.ACTION_EXAMPLE)}</p>` : ""}
       <h2 class="dx-title cc-my-action">MY ACTION</h2>
@@ -611,40 +648,35 @@
 
   function vOwn() {
     const last = store.records[store.records.length - 1];
-    if (ui.gateway && last && last.roadblock) {
-      const R = D.ROADBLOCKS[last.roadblock];
-      return `<button class="cc-backlink" data-act="closeGateway">${ICON.back}OWN IT</button>
-        <div class="cc-gw-sec cc-gw-first"><p class="cc-road-label">YOUR ROADBLOCK:</p><h1 class="dx-card-title">${esc(R.name.toUpperCase())}</h1><p class="dx-text">${esc(R.looks)}</p></div>
-        <div class="cc-gw-sec"><p class="cc-road-label">THE GATEWAY:</p><p class="dx-card-title">${esc(R.gateway.toUpperCase())}</p><p class="dx-text">${esc(R.detail)}</p></div>
-        <div class="cc-gw-sec"><p class="cc-road-label">METHOD STAGE:</p><p class="dx-card-title">${esc(R.stage.toUpperCase())}</p></div>
-        <div class="cc-gw-sec"><p class="dx-text">${esc(whyLine(last))}</p></div>`;
-    }
     const road = !last ? `<div class="dx-card cc-road"><p class="cc-road-label">YOUR ROADBLOCK:</p><p class="dx-card-title">AFTER YOUR FIRST CHECK</p>
         <p class="dx-text">What's getting in the way of your action shows here after your Week 2 check.</p></div>`
       : last.roadblock ? (() => {
-      const R = D.ROADBLOCKS[last.roadblock];
-      // Whole tile opens the gateway; the + bottom-right shows that it does.
-      return `<div class="dx-card cc-road cc-road--open" role="button" tabindex="0" data-act="openGateway" aria-label="Your roadblock: ${esc(R.name)}. Open the gateway">
+      const R = D.ROADBLOCKS[last.roadblock], open = !!ui.gateway;
+      // Tap the tile (the + bottom-right) and it opens right here to show THE GATEWAY; tap again (−) to fold it back.
+      return `<div class="dx-card cc-road cc-road--open${open ? " is-open" : ""}" role="button" tabindex="0" data-act="toggleGateway" aria-expanded="${open}"
+          aria-label="Your roadblock: ${esc(R.name)}. ${open ? "Hide" : "Show"} the gateway">
         <p class="cc-road-label">YOUR ROADBLOCK:</p><p class="dx-card-title">${esc(R.name.toUpperCase())}</p><p class="dx-text">${esc(R.looks)}</p>
-        <span class="cc-plus" aria-hidden="true">${ICON.plus}</span></div>`;
+        ${open ? `<div class="cc-road-gw"><p class="cc-road-label">THE GATEWAY:</p><p class="dx-card-title">${esc(R.gateway.toUpperCase())}</p><p class="dx-text">${esc(R.detail)}</p></div>` : ""}
+        <span class="cc-plus" aria-hidden="true">${open ? ICON.minus : ICON.plus}</span></div>`;
     })() : `<div class="dx-card cc-road"><p class="cc-road-label">YOUR ROADBLOCK:</p><p class="dx-card-title">NONE SHOWING</p>
         <p class="dx-text">All five answers were Yes. Identify the coaching situation most likely to pull you back.</p></div>`;
     const gap = D.GAP_LINE.split(". ");
-    // Where the coach is (their latest check): that letter's circle filled black, then a black tile with the letter and its name.
+    // Where the coach is (their latest check): three tiles A / B / C, theirs black (with YOU ARE HERE), the others white.
+    // Each tile opens its meaning in a pop-up in the middle of the screen; the small arrow top-right shows it can be tapped.
     const mine = last ? D.STATUS[last.status].abc : null;
     const cp = last ? (D.CHECKPOINTS.find(c => c.key === last.checkpoint) || { label: "Latest check" }) : null;
-    const you = mine
-      // The whole tile opens the same meaning pop-up as tapping the letter; the small arrow top-right shows it can be tapped.
-      ? `<button class="cc-you" data-act="abc" data-v="${mine}" aria-haspopup="dialog" aria-label="You are at ${mine}: ${esc(D.ABC[mine].name)}. See what it means">
-          <span class="cc-you-letter" aria-hidden="true"><span>${mine}</span></span>
-          <span class="cc-you-text"><span class="cc-you-label">YOU ARE HERE · ${esc(cp.label.toUpperCase())}</span><span class="cc-you-name">${esc(D.ABC[mine].name.toUpperCase())}</span></span>
-          <span class="cc-you-arrow" aria-hidden="true">${ICON.down}</span></button>`
-      : `<p class="dx-text cc-you-empty">Your letter shows here after your Week 2 check.</p>`;
+    // Yours: black, with "YOU ARE HERE · WEEK 2"; the other two faded.
+    const tiles = `<div class="cc-abc-tiles${mine ? " has-mine" : ""}">${["A", "B", "C"].map(L => {
+      const me = L === mine;
+      return `<button class="cc-abc-tile${me ? " is-mine" : ""}" data-act="abc" data-v="${L}" aria-haspopup="dialog"
+          aria-label="${L}: ${esc(D.ABC[L].name)}${me ? ". You are here" : ""}. See what it means">
+        <span class="cc-abc-tile-letter" aria-hidden="true"><span>${L}</span></span>
+        <span class="cc-abc-tile-text">${me ? `<span class="cc-abc-tile-label">YOU ARE HERE · ${esc(cp.label.toUpperCase())}</span>` : ""}<span class="cc-abc-tile-name">${esc(D.ABC[L].name.toUpperCase())}</span></span>
+        <span class="cc-abc-tile-arrow" aria-hidden="true">${ICON.down}</span></button>`;
+    }).join("")}</div>`;
     return `<p class="dx-intro" style="margin-top:6px">Where are you?</p>
-      <div class="cc-abc">${["A", "B", "C"].map(L => `<button class="cc-circ${L === mine || ui.popup === L ? " is-on" : ""}" data-act="abc" data-v="${L}" aria-label="${L}: ${esc(D.ABC[L].name)}${L === mine ? " (where you are)" : ""}"><span>${L}</span></button>`).join("")}</div>
-      <p class="dx-text cc-hint">Tap a letter to see what it means.</p>
-      ${you}
-      ${looks(last)}
+      ${tiles}
+      ${mine ? `<hr class="cc-abc-rule">${looks(last)}` : `<p class="dx-text cc-you-empty">Your letter shows after your Week 2 check.</p>`}
       <p class="dx-quote cc-gap">${esc(gap[0])}. <em>${esc(gap.slice(1).join(". "))}</em></p>
       ${road}`;
   }
@@ -652,9 +684,8 @@
   function vChange() {
     const last = store.records[store.records.length - 1], a = store.action;
     // MY COMMITMENT: a grey tile (like NEXT CHECK) so it stands out; title in the same style as TIPS FOR YOUR NEXT SESSION,
-    // the "committed" lock beside it, then the action a little bigger with the coach's own words bold.
-    // TEST ONLY: tapping the lock offers to reset everything. Remove before launch.
-    const act = a ? `<section class="dx-card cc-commit"><h2 class="cc-tips-title cc-commit-title">MY COMMITMENT <button class="cc-lock" data-act="askReset" aria-label="Committed. Test: reset everything">${ICON.lock}</button></h2>${promise(a)}</section>` : "";
+    // the "committed" lock beside it (just a symbol, not a button), then the action a little bigger with the coach's own words bold.
+    const act = a ? `<section class="dx-card cc-commit"><h2 class="cc-tips-title cc-commit-title">MY COMMITMENT <span class="cc-lock" role="img" aria-label="Committed">${ICON.lock}</span></h2>${promise(a)}</section>` : "";
     if (complete()) {
       const first = D.STATUS[store.records[0].status].name, end = D.STATUS[last.status].name;
       return act + `<div class="dx-card cc-done"><p class="dx-card-label">PROGRAMME COMPLETE</p>
@@ -668,8 +699,8 @@
       ? `<div class="dx-card cc-ready"><div class="dx-card-head"><p class="dx-card-label">NEXT CHECK</p><p class="dx-card-tag">${nc.cp.label.toUpperCase()}</p></div>
           <p class="dx-card-title">Your check is ready</p><p class="dx-text">Same five questions, same action.</p>
           <button class="dx-btn dx-btn--gold" data-act="begin">TAKE IT NOW ${ICON.arrow}</button></div>`
-      // TEST ONLY: tapping the countdown jumps to the next check's date and starts it. Remove before launch.
-      : `<div class="dx-card cc-count" role="button" tabindex="0" data-act="testSkip" aria-label="Test: start the next check now">${smallRing(nc.left, nc.elapsed, nc.left === 1 ? "DAY" : "DAYS", nc.left + " days left")}
+      // The countdown is information only: the check opens on its date (no way to start it early).
+      : `<div class="dx-card cc-count">${smallRing(nc.left, nc.elapsed, nc.left === 1 ? "DAY" : "DAYS", nc.left + " days left")}
           <div><p class="dx-card-label">NEXT CHECK</p><p class="dx-card-title">${nc.cp.label}</p><p class="dx-text" style="font-size:16px">in ${nc.left} day${nc.left === 1 ? "" : "s"}</p></div></div>`;
     // Tips come from a check's answers, so they only show from Week 2.
     return act + (last ? `<h2 class="cc-tips-title">TIPS FOR YOUR NEXT SESSION</h2>${tipList(last.tips, false)}` : "") + state;
@@ -678,7 +709,7 @@
   /* Coaching guide: a numbered list (01 SEE IT · 02 OWN IT · 03 CHANGE IT) split by thin lines; tap a row to open it.
      Then Pocket Mirror, with a picture of it on a phone. Nothing to answer or save. */
   function vGuide() {
-    const G = D.GUIDE, M = G.more;
+    const G = D.GUIDE;
     const row = (S, i) => {
       const open = !!ui.guideOpen[S.key];
       return `<section class="cc-guide-row${open ? " is-open" : ""}">
@@ -694,19 +725,11 @@
           <ul class="cc-guide-list">${S.reminders.map(([b, rest]) => `<li><b>${esc(b)}</b> ${esc(rest)}</li>`).join("")}</ul>
         </div>` : ""}</section>`;
     };
+    // (The Pocket Mirror tile, "Continue your development", was removed. Its words and picture are still in
+    //  data.js GUIDE.more and assets/pocket-mirror.jpg if it comes back.)
     return `<p class="dx-intro cc-guide-sub">${esc(G.sub)}</p>
       <div class="cc-guide-rows">${G.sections.map(row).join("")}</div>
-      <p class="cc-guide-label cc-guide-more-label">${esc(M.label)}</p>
-      <a class="cc-pm" href="${esc(M.url)}" target="_blank" rel="noopener" aria-label="${esc(M.button)} (free, opens in a new tab)">
-        <img class="cc-pm-img" src="${esc(M.image)}" alt="${esc(M.imageAlt)}" width="600" height="900" loading="lazy">
-        <div class="cc-pm-text">
-          <div class="cc-pm-head"><span class="cc-pm-name">${esc(M.name)}</span><span class="cc-free">${esc(M.tag)}</span></div>
-          <p class="cc-pm-hook">${esc(M.hook)}</p>
-          ${M.line ? `<p class="cc-pm-line">${M.line.map(esc).join("<br>")}</p>` : ""}
-          <span class="cc-pm-go" aria-hidden="true">${ICON.arrow}</span>
-        </div>
-      </a>
-      <p class="cc-legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a></p>`;
+      <p class="cc-legal"><span class="cc-legal-link">Privacy Policy</span> · <span class="cc-legal-link">Terms of Use</span></p>`;
   }
 
   function vHome() {
@@ -716,8 +739,7 @@
       <button class="cc-x" data-act="dismissTip" aria-label="Dismiss">${ICON.x}</button></div>` : "";
     const titles = { see: "SEE IT", own: "OWN IT", change: "CHANGE IT", guide: D.GUIDE.title };
     const body = ui.tab === "see" ? vSee() : ui.tab === "own" ? vOwn() : ui.tab === "guide" ? vGuide() : vChange();
-    const head = (ui.tab === "own" && ui.gateway) ? "" :
-      `<h1 class="dx-title dx-title--xl" style="margin-top:0">${titles[ui.tab]}</h1>`;
+    const head = `<h1 class="dx-title dx-title--xl" style="margin-top:0">${titles[ui.tab]}</h1>`;
     return `<section class="dx-screen cc-home">${head}${banner}${body}</section>${tabs()}${vPopup()}`;
   }
 
@@ -742,13 +764,6 @@
         ${[2, 1, 0].map(p => `<div class="cc-qex-row"><p class="cc-road-label">${WORDS[p]}</p><p class="dx-text">${esc(Q.opts[2 - p])}</p></div>`).join("")}
       </div>`;
     }
-    if (ui.popup === "reset") {   // TEST ONLY (from the lock on CHANGE IT)
-      return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet center" role="dialog" aria-modal="true" aria-label="Reset everything">
-        <p class="dx-label dx-label--muted">TEST ONLY</p><h2 class="dx-title dx-title--xl" style="margin-top:12px">RESET EVERYTHING?</h2>
-        <p class="dx-intro">This deletes your checks, your action and your sign-up on this device, and takes you back to the start.</p>
-        <button class="dx-btn dx-btn--ink" data-act="resetAll">YES, RESET</button>
-        <button class="dx-btn dx-btn--outline" data-act="closePopup">CANCEL</button></div>`;
-    }
     if (ui.popup === "ready") {
       const nc = nextCheck();
       return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet center" role="dialog" aria-modal="true" aria-label="Check ready">
@@ -757,8 +772,9 @@
         <button class="dx-btn dx-btn--gold" data-act="begin">TAKE IT NOW ${ICON.arrow}</button>
         <button class="dx-btn dx-btn--outline" data-act="closePopup">LATER</button></div>`;
     }
+    // A / B / C meaning: a pop-up in the middle of the screen (the other pop-ups slide up from the bottom).
     const A = D.ABC[ui.popup];
-    return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet" role="dialog" aria-modal="true" aria-label="${esc(A.name)}">
+    return `<div class="cc-dim" data-act="closePopup"></div><div class="cc-sheet cc-modal" role="dialog" aria-modal="true" aria-label="${esc(A.name)}">
       <button class="cc-x" data-act="closePopup" aria-label="Close">${ICON.x}</button>
       <div class="cc-sheet-head"><span class="cc-circ is-on"><span>${ui.popup}</span></span><h2 class="dx-title">${esc(A.name.toUpperCase())}</h2></div>
       ${A.reads.map(([label, quote]) => `<div class="cc-abc-read">${label ? `<p class="cc-road-label">${esc(label.toUpperCase())}:</p>` : ""}
@@ -954,6 +970,14 @@
       go(started() ? "home" : "landing");                     // workshop day
     },
     toReflect() { ui.actMode = null; ui.actChoice = null; go("reflect"); },
+    // One-screen 06: pick what to do with the current commitment. keep = locked; new = empty; easier / smaller = filled in to adjust.
+    nameChoose(el) {
+      const v = el.dataset.v, a = store.action;
+      ui.actChoice = v; ui.actMode = "edit";
+      ui.when = v === "new" ? "" : a.when.replace(/,$/, "");
+      ui.will = v === "new" ? "" : a.will.replace(/\.$/, "");
+      render();
+    },
     reflectExample() { ui.popup = "rex"; render(); },
     // Tap shows the choice for a beat, then moves straight on (no Next button).
     answer(el) {
@@ -996,22 +1020,19 @@
     closePopup() { ui.popup = null; render(); },
     periodToggle() { ui.periodOpen = !ui.periodOpen; render(); },
     period(el) { ui.chip = +el.dataset.v; ui.periodOpen = false; render(); },
-    openGateway() { ui.gateway = true; render(); window.scrollTo(0, 0); },
-    closeGateway() { ui.gateway = false; render(); },
+    // Roadblock tile on OWN IT: open / fold THE GATEWAY inside the tile (stays where you are on the page).
+    toggleGateway() { ui.gateway = !ui.gateway; render(); },
     dismissTip() { store.homeTipDismissed = true; save(); render(); },
     export: exportCSV,
-    testSkip() { const nc = nextCheck(); if (!nc) return; store.demoOffsetDays += nc.left; save(); ui.readyShown = true; begin(); },
-    // TEST ONLY (?demo): sign out to try Sign in (the account and checks stay saved in Supabase).
+    // TEST ONLY (?demo, preview pages on your own computer only): sign out to try Sign in.
     async demoSignOut() { try { await sb.auth.signOut({ scope: "local" }); } catch (e) { /* offline */ } store.signedIn = false; save(); render(); },
     demoSkip() { store.demoOffsetDays += 14; save(); ui.readyShown = false; ui.popup = null; render(); },
-    askReset() { ui.popup = "reset"; render(); },
-    // TEST ONLY: clears this phone and signs out. What's already saved in Supabase stays there
-    // (delete it in the Supabase dashboard, or sign up again with a different email to start fresh).
+    // TEST ONLY (?demo bar's Reset): clears this device and signs out.
     resetAll() {
       sb.auth.signOut({ scope: "local" }).catch(() => {});
       try { localStorage.removeItem(KEY); } catch (e) { /* storage blocked */ }
       store = fresh();
-      Object.assign(ui, { view: "landing", tab: "see", popup: null, gateway: false, chip: null, periodOpen: false, readyShown: false, guideOpen: {},
+      Object.assign(ui, { view: "landing", tab: "see", popup: null, gateway: false, chip: null, periodOpen: false, readyShown: false, guideOpen: { see: true },
         authMode: "signup", su: { first: "", last: "", email: "", gender: null, age: null }, siEmail: "", code: "", authErr: "" });
       render(); window.scrollTo(0, 0);
     },
@@ -1039,6 +1060,7 @@
     const period = document.getElementById("period");
     if (period) period.addEventListener("change", () => { ui.chip = +period.value; render(); });
     bindAuthInputs();
+    if (document.querySelector(".cc-nameit")) return bindNameIt();
     const w = document.getElementById("when"), wi = document.getElementById("will"), commit = document.getElementById("commit");
     if (w && wi && commit) {
       const preview = document.getElementById("preview");
@@ -1046,7 +1068,6 @@
         ui.when = w.value; ui.will = wi.value;
         const chk = actionCheck(ui.when, ui.will);
         commit.disabled = !chk.ok;
-        document.getElementById("act-note").textContent = chk.note;
         preview.innerHTML = promise({ when: ui.when.trim(), will: ui.will.trim() });
       };
       w.addEventListener("input", upd); wi.addEventListener("input", upd);
@@ -1066,6 +1087,21 @@
       indentStarters();
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(indentStarters);
     }
+  }
+  /* One-screen 06: typing updates state without re-rendering (keyboard stays open); I'M COMMITTED unlocks when
+     box 1 has a few words and the commitment is kept or written. Its words are saved as this check's answers 2 and 3. */
+  function bindNameIt() {
+    const commit = document.getElementById("commit"), well = document.getElementById("rf-well");
+    const w = document.getElementById("when"), wi = document.getElementById("will"), note = document.getElementById("act-note");
+    const upd = () => { if (commit) commit.disabled = !nameItReady(); };
+    well.addEventListener("input", () => { ui.reflect.well = well.value; upd(); });
+    if (w && wi) {
+      const f = () => { ui.when = w.value; ui.will = wi.value; if (note) note.textContent = actionCheck(ui.when, ui.will).note; upd(); };
+      w.addEventListener("input", f); wi.addEventListener("input", f);
+      indentStarters();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(indentStarters);
+    }
+    if (commit) bindHold(commit, () => { ui.reflect.when = cleanEnd(ui.when); ui.reflect.will = cleanEnd(ui.will); commitAction(); }, nameItReady);
   }
   /* Sign up / sign in boxes: typing updates state without re-rendering (keeps the keyboard open). */
   let resendTimer = null;

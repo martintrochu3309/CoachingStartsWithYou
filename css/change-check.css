@@ -76,10 +76,10 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 .cc-privacy { margin: 24px 0 0; font-size: 13px; line-height: 1.5; font-weight: 300; color: var(--dx-muted); }
 /* "By signing up, you agree to our Terms & Privacy Policy." grey italic, centred, just above SEND MY CODE */
 .cc-terms { margin: 0 0 12px; text-align: center; font-size: 12px; line-height: 1.45; font-style: italic; font-weight: 300; color: var(--dx-soft); }
-.cc-terms a { white-space: nowrap; color: var(--dx-muted); text-decoration: underline; text-decoration-color: var(--dx-outline); text-underline-offset: 3px; }
+.cc-terms a, .cc-terms .cc-terms-link { white-space: nowrap; color: var(--dx-muted); text-decoration: underline; text-decoration-color: var(--dx-outline); text-underline-offset: 3px; }
 /* Privacy · Terms links at the foot of the Coaching guide */
 .cc-legal { margin: 26px 0 0; text-align: center; font-size: 13px; font-weight: 300; color: var(--dx-soft); }
-.cc-legal a { color: var(--dx-muted); text-decoration: underline; text-underline-offset: 2px; }
+.cc-legal a, .cc-legal .cc-legal-link { color: var(--dx-muted); text-decoration: underline; text-underline-offset: 2px; }
 .cc-auth-err { margin-top: 16px; }
 .cc-auth-email { font-weight: 500; color: var(--dx-ink); word-break: break-all; }
 /* Six code boxes; one invisible input sits over them so typing, pasting and iPhone code autofill all work */
@@ -114,6 +114,23 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 .cc-rq .dx-box { min-height: 0; padding: 12px 14px; font-size: 16px; font-weight: 300; }
 .cc-rq .dx-box::placeholder { font-style: italic; }
 .cc-rq .dx-box-starter { left: 15px; top: 13px; font-size: 16px; font-style: italic; font-weight: 300; }
+/* Writing boxes: no square browser outline while typing; the box's own rounded border turns black instead.
+   (The When / I will pair shares one border, so the whole pair turns black.) */
+.dx .dx-box:focus, .dx .dx-box:focus-visible { outline: none; }
+.dx .cc-rq .dx-box:focus { border-color: var(--dx-ink); }
+.dx .cc-oneline:focus-within { border-color: var(--dx-ink); }
+
+/* One-screen 06 (coach already has an action): box 1, then YOUR CURRENT COMMITMENT and the two choices */
+.cc-nameit .cc-nameit-label { margin-top: 24px; }
+.cc-nameit-card { margin-top: 8px; padding: 14px 16px; }
+.cc-nameit-card .dx-promise { margin-top: 0; font-size: 16px; line-height: 1.5; }
+.cc-nameit-card .dx-own { font-weight: 500; }
+.cc-nameit-boxes { margin-top: 8px; }
+.cc-nameit-choices { margin-top: 14px; }
+.cc-nameit-choices .dx-pill { padding: 0 6px; font-size: 10px; letter-spacing: .14em; }
+.cc-nameit-help { margin-top: 12px; font-size: 14px; line-height: 1.5; }
+.cc-nameit .cc-choose { margin-top: 0; }
+
 /* Example pop-up: the grey starter, then the answer; the action it becomes, last */
 .cc-rex-starter { font-style: italic; color: var(--dx-soft); }
 .cc-rex-result .dx-promise { margin-top: 6px; font-size: 16px; }
@@ -177,7 +194,6 @@ body.dx { min-height: 100dvh; overflow-x: clip; } /* never scroll sideways */
 .cc-my-head { display: flex; align-items: center; gap: 8px; }
 .cc-lock { display: flex; color: var(--dx-ink); }
 /* TEST ONLY: the lock is a button (reset). Bigger tap area without moving the icon. */
-button.cc-lock { padding: 12px; margin: -12px; }
 .cc-my .dx-promise { margin-top: 10px; font-size: 16px; line-height: 1.5; }
 /* SEE IT / CHANGE IT: the coach's own words in bold ("When" / "I will" stay light grey) */
 .cc-my .dx-own { font-weight: 500; }
@@ -204,21 +220,33 @@ button.cc-lock { padding: 12px; margin: -12px; }
 .cc-ans-sub { margin: 14px 0 0; font-size: 15px; font-style: italic; font-weight: 300; color: var(--dx-muted); }
 .cc-ans-go { margin-top: 18px; }
 
-/* OWN IT: where you are. Their letter filled black above; a black tile with the letter and its name; the gap line smaller */
-.dx .cc-you { position: relative; display: flex; align-items: center; gap: 16px; width: 100%; margin-top: 22px; padding: 18px 44px 18px 20px; text-align: left;
-  border-radius: var(--dx-radius-card); background: var(--dx-ink); color: #fff; cursor: pointer; }
-.dx .cc-you:active { transform: scale(.99); }
-.cc-you-text { display: block; min-width: 0; }
-.cc-you-text > span { display: block; }
-/* Small white down arrow, top right: tap the tile to see what the letter means */
-.cc-you-arrow { position: absolute; top: 14px; right: 16px; display: flex; color: #fff; }
-.cc-you-arrow svg { width: 18px; height: 18px; }
-.cc-you-letter { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; border: 2px solid #fff;
-  font: italic 700 26px/1 var(--dx-font-display); color: #fff; }
-.cc-you-letter > span { display: block; text-box: trim-both cap alphabetic; transform: translateX(-0.05em); }
-.cc-you-label { margin: 0; font: 700 10px/1.3 var(--dx-font-body); letter-spacing: .18em; color: #bdbdb8; }
-.cc-you-name { margin: 6px 0 0; font: italic 700 19px/1.15 var(--dx-font-display); letter-spacing: -.01em; color: #fff; }
+/* OWN IT: where you are. Three tiles A / B / C: the coach's letter black (white text, YOU ARE HERE), the others white with a thin outline.
+   Each opens its meaning (centred pop-up); the small arrow top-right shows it can be tapped. */
+.cc-abc-tiles { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.dx .cc-abc-tile { position: relative; display: flex; align-items: center; gap: 14px; width: 100%; min-height: 72px; padding: 14px 44px 14px 16px;
+  text-align: left; border-radius: 20px; border: 1px solid var(--dx-outline); background: #fff; color: var(--dx-ink); cursor: pointer; }
+.dx .cc-abc-tile.is-mine { background: var(--dx-ink); border-color: var(--dx-ink); color: #fff; }
+.dx .cc-abc-tile:active { transform: scale(.99); }
+.cc-abc-tile-letter { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 2px solid currentColor;
+  font: italic 700 20px/1 var(--dx-font-display); }
+.cc-abc-tile-letter > span { display: block; text-box: trim-both cap alphabetic; transform: translateX(-0.05em); }
+.cc-abc-tile-text { display: block; min-width: 0; }
+.cc-abc-tile-label { display: block; margin-bottom: 5px; font: 700 10px/1.3 var(--dx-font-body); letter-spacing: .18em; color: #bdbdb8; }
+.cc-abc-tile-name { display: block; font: italic 700 16px/1.15 var(--dx-font-display); letter-spacing: -.01em; }
+.cc-abc-tile-arrow { position: absolute; top: 12px; right: 14px; display: flex; }
+.cc-abc-tile-arrow svg { width: 18px; height: 18px; }
+/* Once there's a result: the other two tiles faded, so the black one (yours) stands out,
+   with a thin grey dashed ring around it (a little more space between tiles so the ring breathes). */
+.cc-abc-tiles.has-mine { gap: 16px; }
+.dx .has-mine .cc-abc-tile:not(.is-mine) { color: #a3a39f; border-color: #e3e3df; }
+.dx .has-mine .cc-abc-tile.is-mine { outline: 1.5px dashed #6f6f6b; outline-offset: 4px; }
+/* Thin line under the C tile, then what the coach's letter looks like */
+.cc-abc-rule { margin: 22px 0 0; border: 0; border-top: 1px solid var(--dx-rule); }
 .cc-you-empty { margin-top: 20px; text-align: center; font-size: 15px; font-style: italic; color: var(--dx-soft); }
+/* A / B / C meaning: a pop-up in the middle of the screen */
+.cc-sheet.cc-modal { top: 50%; bottom: auto; transform: translateY(-50%); animation: cc-pop .2s ease; }
+@keyframes cc-pop { from { opacity: 0; transform: translateY(-50%) scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .cc-sheet.cc-modal { animation: none; } }
 .dx-quote.cc-gap { margin-top: 26px; padding: 20px 0; font-size: 19px; }
 /* Under the black letter tile: what it looks like (status, their own voice, what it means). Plain text; the gap line follows. */
 .cc-looks { padding: 20px 4px 0; }
@@ -326,13 +354,17 @@ button.cc-lock { padding: 12px; margin: -12px; }
 .cc-plus { position: absolute; right: 14px; bottom: 14px; display: grid; place-items: center; width: 44px; height: 44px;
   border-radius: 50%; background: var(--dx-ink); color: #fff; }
 
-/* Gateway page */
+/* Roadblock tile opened: THE GATEWAY inside it, under a thin line */
+.cc-road-gw { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--dx-rule); }
+.cc-road .cc-road-gw .dx-card-title { margin-top: 12px; }
+
+/* Gateway page (no longer used: the gateway opens inside the roadblock tile) */
 .cc-gw-sec { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--dx-rule); }
 .cc-gw-first { margin-top: 18px; padding-top: 0; border-top: 0; }
 .cc-gw-sec > .dx-text:first-child { margin-top: 0; }
 
 /* Change it */
-.cc-count { display: flex; align-items: center; gap: 18px; cursor: pointer; } /* tappable for testing */
+.cc-count { display: flex; align-items: center; gap: 18px; }
 .cc-count .dx-card-title { font-size: 22px; }
 .cc-ready .dx-btn { margin-top: 16px; }
 .cc-done { background: var(--dx-ink); color: #fff; }

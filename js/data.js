@@ -12,7 +12,8 @@ window.CC_DATA = {
        false = the normal programme. On workshop day they sign up and write their action; Week 2 opens 14 days later.
      The plain link (no ?org=, or a code not listed here) = no organization, normal programme. */
   ORGANIZATIONS: {
-    "golf-department": { name: "Golf Department", startAtWeek2: true }
+    /* leader = the title of the person at this organization who can see coaches' answers ("the Director of Golf Department") */
+    "golf-department": { name: "Golf Department", startAtWeek2: true, leader: "Director" }
   },
 
   /* Checkpoints: day = days after the workshop (the moment they commit to their first action at sign-up).
